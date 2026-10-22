@@ -3,7 +3,7 @@
 
 Uso:
     export HUBSPOT_TOKEN="pat-eu1-..."   # token de una app privada de HubSpot
-    python3 actualizar.py                 # desde el 1 de enero del año en curso
+    python3 actualizar.py                 # desde julio 2025 (o 15 meses atrás, lo que sea antes)
     python3 actualizar.py --desde 2025-09-01
 
 La app privada necesita el permiso (scope) crm.objects.deals.read.
@@ -122,7 +122,7 @@ def buscar(token, desde, hasta):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--desde", help="AAAA-MM-DD (por defecto, 1 de enero de este año)")
+    ap.add_argument("--desde", help="AAAA-MM-DD (por defecto, julio 2025 o 15 meses atrás, lo que sea antes)")
     args = ap.parse_args()
 
     token = os.environ.get("HUBSPOT_TOKEN")
@@ -130,7 +130,10 @@ def main():
         sys.exit("Falta la variable de entorno HUBSPOT_TOKEN (token de la app privada de HubSpot).")
 
     hoy = datetime.now(TZ).date()
-    desde = date.fromisoformat(args.desde) if args.desde else date(hoy.year, 1, 1)
+    # el panel muestra por defecto los últimos 14 meses; se descarga algo más para poder mirar atrás
+    m = hoy.year * 12 + hoy.month - 1 - 15
+    hace15 = date(m // 12, m % 12 + 1, 1)
+    desde = date.fromisoformat(args.desde) if args.desde else min(date(2025, 7, 1), hace15)
     desde = desde.replace(day=1)
 
     # Una búsqueda por mes: la API de búsqueda corta en 10.000 resultados por consulta.

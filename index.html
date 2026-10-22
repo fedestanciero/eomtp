@@ -19,24 +19,6 @@
   --s6: #008300; --s7: #6250d6; --s8: #e34948;
   --heat-0: #fcfcfb; --heat-1: #2a78d6;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
-    --muted: #898781; --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
-    --s6: #008300; --s7: #9085e9; --s8: #e66767;
-    --heat-0: #1a1a19; --heat-1: #3987e5;
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
-  --muted: #898781; --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
-  --s6: #008300; --s7: #9085e9; --s8: #e66767;
-  --heat-0: #1a1a19; --heat-1: #3987e5;
-}
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--page); color: var(--ink);
@@ -131,8 +113,8 @@ td.heat { color: var(--ink); }
     <div class="card span2">
       <h2>Leads totales vs Matriculados</h2>
       <div class="switch" id="sw-lvm" role="group" aria-label="Cómo contar los matriculados">
-        <button data-modo="cohorte" aria-pressed="true">Matriculados de los leads del mes</button>
-        <button data-modo="mes" aria-pressed="false">Matrículas cerradas en el mes</button>
+        <button data-modo="mes" aria-pressed="true">Matrículas cerradas en el mes</button>
+        <button data-modo="cohorte" aria-pressed="false">Matriculados de los leads del mes</button>
       </div>
       <p class="desc" id="desc-lvm"></p>
       <div class="chart" id="c-lvm"></div>
@@ -140,8 +122,8 @@ td.heat { color: var(--ink); }
     <div class="card span2">
       <h2>% de matriculación por mes</h2>
       <div class="switch" id="sw-pct" role="group" aria-label="Cómo contar los matriculados">
-        <button data-modo="cohorte" aria-pressed="true">Matriculados de los leads del mes</button>
-        <button data-modo="mes" aria-pressed="false">Matrículas cerradas en el mes</button>
+        <button data-modo="mes" aria-pressed="true">Matrículas cerradas en el mes</button>
+        <button data-modo="cohorte" aria-pressed="false">Matriculados de los leads del mes</button>
       </div>
       <p class="desc" id="desc-pct"></p>
       <div class="chart" id="c-pct"></div>
@@ -151,8 +133,8 @@ td.heat { color: var(--ink); }
       <h2>Leads y matriculados por curso</h2>
       <p class="desc" id="desc-curso">Elige un curso en el desplegable</p>
       <div class="switch" id="sw-curso" role="group" aria-label="Cómo contar los matriculados">
-        <button data-modo="cohorte" aria-pressed="true">Matriculados de los leads del mes</button>
-        <button data-modo="mes" aria-pressed="false">Matrículas cerradas en el mes</button>
+        <button data-modo="mes" aria-pressed="true">Matrículas cerradas en el mes</button>
+        <button data-modo="cohorte" aria-pressed="false">Matriculados de los leads del mes</button>
       </div>
       <details class="dd" id="dd-cursos"><summary id="dd-label">Cursos</summary><div class="panel" id="dd-panel"></div></details>
       <div class="legend" id="l-city"></div>
@@ -181,7 +163,7 @@ td.heat { color: var(--ink); }
   const NS = "http://www.w3.org/2000/svg";
   const tip = document.getElementById("tip");
   // switches de cómo contar los matriculados (cada gráfico tiene el suyo)
-  let modoLvm = "cohorte", modoPct = "cohorte", modoCurso = "cohorte";
+  let modoLvm = "mes", modoPct = "mes", modoCurso = "mes";
   function conectarSwitch(id, alCambiar) {
     document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener("click", () => {
       document.querySelectorAll(`#${id} button`).forEach(o => o.setAttribute("aria-pressed", o === b));
@@ -234,7 +216,8 @@ td.heat { color: var(--ink); }
     selDesde.add(new Option(mesLargo(m), i));
     selHasta.add(new Option(mesLargo(m), i));
   });
-  selDesde.value = 0; selHasta.value = D.meses.length - 1;
+  // por defecto: el mes en curso y los 13 anteriores
+  selDesde.value = Math.max(0, D.meses.length - 14); selHasta.value = D.meses.length - 1;
   [selDesde, selHasta].forEach(s => s.addEventListener("change", () => {
     if (+selDesde.value > +selHasta.value) (s === selDesde ? selHasta : selDesde).value = s.value;
     render();
@@ -452,7 +435,10 @@ td.heat { color: var(--ink); }
         : opts.noLabels ? []
         : [...new Set([se.values.indexOf(Math.max(...se.values)), se.values.indexOf(Math.min(...se.values)), se.values.length - 1])];
       const dy = se.axis === "right" ? 17 : -9; // etiquetas de la serie derecha, debajo del punto
-      idx.forEach(i => el("text", { x: pts[i][0], y: pts[i][1] + dy, "text-anchor": "middle", class: "lbl" }, svg).textContent = f(se.values[i]));
+      // en los extremos la etiqueta se alinea hacia adentro para no pisar los ejes
+      const ancla = i => (i === 0 ? "start" : i === se.values.length - 1 ? "end" : "middle");
+      const dx = i => (i === 0 ? -4 : i === se.values.length - 1 ? 4 : 0);
+      idx.forEach(i => el("text", { x: pts[i][0] + dx(i), y: pts[i][1] + dy, "text-anchor": ancla(i), class: "lbl" }, svg).textContent = f(se.values[i]));
     });
     const cross = el("line", { y1: m.t, y2: m.t + ih, stroke: css("--axis"), opacity: 0 }, svg);
     const hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" }, svg);
@@ -497,7 +483,7 @@ td.heat { color: var(--ink); }
     const wonMes = cut(D.entradas.find(e => e.id === "closedwon").valores);
     const wonLvm = modoLvm === "mes" ? wonMes : won;
     document.getElementById("desc-lvm").textContent = modoLvm === "mes"
-      ? `Negocios creados cada mes (eje izquierdo) y negocios que entraron en «Matriculados» ese mes, sin importar cuándo se crearon (eje derecho) · total: ${fmt(sum(wonMes))} matriculados, ${pct((sum(wonMes) * 100) / totL)} de los leads`
+      ? `Negocios creados cada mes (eje izquierdo) y negocios que entraron en «Matriculados» ese mes, sin importar cuándo se crearon (eje derecho) · total: ${fmt(sum(wonMes))} matrículas cerradas, ${pct((sum(wonMes) * 100) / totL)} de los leads`
       : `Negocios creados cada mes (eje izquierdo) y cuántos de ellos están hoy en «Matriculados» (eje derecho) · total: ${fmt(totW)} matriculados, ${pct((totW * 100) / totL)} de los leads`;
     const lvm = [
       { name: "Leads (negocios)", values: leads, color: css("--s2") },
@@ -567,7 +553,6 @@ td.heat { color: var(--ink); }
   render();
   let t;
   addEventListener("resize", () => { clearTimeout(t); t = setTimeout(render, 120); });
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
 })();
 </script>
 </body>
