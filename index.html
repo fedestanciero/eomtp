@@ -588,7 +588,7 @@ td.heat { color: var(--ink); }
         { name: "Leads", value: fmt(leads[i]) },
       ],
     });
-    table(document.getElementById("t-pct"), ["Mes", "Leads", "Matriculados", "% matriculación"],
+    table(document.getElementById("t-pct"), ["Mes", "Leads", modoPct === "mes" ? "Matrículas cerradas" : "Matriculados", "% matriculación"],
       meses.map((m, i) => [mesLargo(m), leads[i], wonPct[i], pct(tasaPct[i])]),
       ["Total", fmt(totL), fmt(totWP), pct((totWP * 100) / totL)]);
 
@@ -651,11 +651,11 @@ td.heat { color: var(--ink); }
       const tL = base.reduce((s, f) => s + f.leads, 0), tW = base.reduce((s, f) => s + f.won, 0);
       const maxL = Math.max(1, ...filas.map(f => f.leads));
       document.getElementById(id).innerHTML =
-        `<table><thead><tr><th>${etiqueta}</th><th>Leads</th><th>% de los leads</th><th>${nomW}</th><th>% de ${nomW.toLowerCase()}</th><th>% matriculación</th></tr></thead><tbody>` +
+        `<table><thead><tr><th>${etiqueta}</th><th>Leads</th><th>% de los leads</th><th>${nomW}</th><th>% matriculación</th><th>Share ${modoCanal === "mes" ? "matrículas" : "matriculados"}</th></tr></thead><tbody>` +
         filas.map(f => `<tr class="${f.tipo || ""}"><td>${f.nombre}</td>` +
           `<td><span class="barra" style="width:${Math.round((f.leads / maxL) * 80)}px"></span>${fmt(f.leads)}</td>` +
-          `<td>${tasa(f.leads, tL)}</td><td>${fmt(f.won)}</td><td>${tasa(f.won, tW)}</td><td><b>${tasa(f.won, f.leads)}</b></td></tr>`).join("") +
-        `<tr class="total"><td>Total</td><td>${fmt(tL)}</td><td>100,0 %</td><td>${fmt(tW)}</td><td>100,0 %</td><td>${tasa(tW, tL)}</td></tr></tbody></table>`;
+          `<td>${tasa(f.leads, tL)}</td><td>${fmt(f.won)}</td><td><b>${tasa(f.won, f.leads)}</b></td><td>${tasa(f.won, tW)}</td></tr>`).join("") +
+        `<tr class="total"><td>Total</td><td>${fmt(tL)}</td><td>100,0 %</td><td>${fmt(tW)}</td><td>${tasa(tW, tL)}</td><td>100,0 %</td></tr></tbody></table>`;
     }
     const ordenar = (x, y) => (x.ultimo || 0) - (y.ultimo || 0) || y.leads - x.leads || y.won - x.won;
 
