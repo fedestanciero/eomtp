@@ -16,6 +16,7 @@
   --axis: #c3c2b7;
   --border: rgba(11,11,11,0.10);
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+  --s6: #008300; --s7: #6250d6; --s8: #e34948;
   --heat-0: #fcfcfb; --heat-1: #2a78d6;
 }
 @media (prefers-color-scheme: dark) {
@@ -24,6 +25,7 @@
     --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
     --muted: #898781; --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+    --s6: #008300; --s7: #9085e9; --s8: #e66767;
     --heat-0: #1a1a19; --heat-1: #3987e5;
   }
 }
@@ -32,6 +34,7 @@
   --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
   --muted: #898781; --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  --s6: #008300; --s7: #9085e9; --s8: #e66767;
   --heat-0: #1a1a19; --heat-1: #3987e5;
 }
 * { box-sizing: border-box; }
@@ -50,24 +53,42 @@ select {
   font: inherit; color: var(--ink); background: var(--surface);
   border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
 }
-.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
-.kpi .label { color: var(--ink-2); font-size: 13px; }
-.kpi .value { font-size: 30px; font-weight: 650; margin-top: 4px; letter-spacing: -0.02em; }
-.kpi .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .span2 { grid-column: 1 / -1; }
 @media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 .card h2 { font-size: 15px; font-weight: 600; margin: 0; }
 .card .desc { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+.dd { position: relative; display: inline-block; margin: 0 0 10px; }
+.dd > summary {
+  list-style: none; cursor: pointer; color: var(--ink); font-size: 13px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+}
+.dd > summary::-webkit-details-marker { display: none; }
+.dd > summary::after { content: " ▾"; color: var(--muted); }
+.dd .panel {
+  position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; min-width: 280px; max-height: 380px; overflow: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14);
+}
+.dd .grupo { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin: 8px 0 2px; }
+.dd label { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; color: var(--ink); cursor: pointer; }
+.dd label small { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.vacio { color: var(--muted); font-size: 13px; padding: 40px 0; text-align: center; }
+.switch { display: inline-flex; gap: 2px; padding: 2px; margin: 0 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--page); }
+.switch button {
+  font: inherit; font-size: 12px; color: var(--ink-2); background: none; border: 0; border-radius: 6px;
+  padding: 5px 10px; cursor: pointer;
+}
+.switch button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
-.legend span { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
-.legend span.off { opacity: .4; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .chart { position: relative; width: 100%; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .chart text.lbl { fill: var(--ink-2); font-size: 11px; }
+.chart text.halo { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; font-weight: 600; }
 details { margin-top: 8px; }
 summary { cursor: pointer; color: var(--ink-2); font-size: 12px; }
 .tablewrap { overflow-x: auto; }
@@ -94,7 +115,7 @@ td.heat { color: var(--ink); }
   <header>
     <div>
       <h1>Panel de Leads</h1>
-      <div class="sub">Negocios creados en HubSpot · leads, matriculados y ciudades</div>
+      <div class="sub">Negocios creados en HubSpot · leads, matriculados y cursos</div>
     </div>
     <div class="meta" id="meta"></div>
   </header>
@@ -104,13 +125,15 @@ td.heat { color: var(--ink); }
     <label for="hasta">Hasta</label><select id="hasta"></select>
   </div>
 
-  <section class="kpis" id="kpis"></section>
 
   <section class="grid">
     <div class="card span2">
       <h2>Leads totales vs Matriculados</h2>
-      <p class="desc">Negocios creados cada mes y cuántos de ellos están hoy en «Matriculados»</p>
-      <div class="legend" id="l-lvm"></div>
+      <div class="switch" id="sw-lvm" role="group" aria-label="Cómo contar los matriculados">
+        <button data-modo="cohorte" aria-pressed="true">Matriculados de los leads del mes</button>
+        <button data-modo="mes" aria-pressed="false">Matrículas cerradas en el mes</button>
+      </div>
+      <p class="desc" id="desc-lvm"></p>
       <div class="chart" id="c-lvm"></div>
     </div>
     <div class="card span2">
@@ -120,15 +143,16 @@ td.heat { color: var(--ink); }
       <details><summary>Ver tabla</summary><div class="tablewrap" id="t-pct"></div></details>
     </div>
     <div class="card span2">
-      <h2>Leads totales por ciudad</h2>
-      <p class="desc">Cursos de tatuaje por ciudad · haz clic en la leyenda para ocultar una ciudad</p>
+      <h2>Leads y matriculados por curso</h2>
+      <p class="desc" id="desc-curso">Elige un curso en el desplegable</p>
+      <details class="dd" id="dd-cursos"><summary id="dd-label">Cursos</summary><div class="panel" id="dd-panel"></div></details>
       <div class="legend" id="l-city"></div>
       <div class="chart" id="c-city"></div>
       <details><summary>Ver tabla</summary><div class="tablewrap" id="t-city"></div></details>
     </div>
     <div class="card span2">
       <h2>Leads por etapa</h2>
-      <p class="desc">Etapa actual de los negocios según su mes de creación</p>
+      <p class="desc">Negocios que entraron en cada etapa durante el mes (según la fecha de entrada a la etapa). Un negocio cuenta en cada etapa por la que pasó, así que las columnas no suman el total de leads.</p>
       <div class="tablewrap" id="t-stage"></div>
     </div>
   </section>
@@ -147,8 +171,48 @@ td.heat { color: var(--ink); }
   const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const NS = "http://www.w3.org/2000/svg";
   const tip = document.getElementById("tip");
-  const ciudadColor = ["--s1", "--s2", "--s3", "--s4", "--s5"];
-  const ocultas = new Set();
+  // switch del gráfico Leads vs Matriculados
+  let modoLvm = "cohorte";
+  document.querySelectorAll("#sw-lvm button").forEach(b => b.addEventListener("click", () => {
+    modoLvm = b.dataset.modo;
+    document.querySelectorAll("#sw-lvm button").forEach(o => o.setAttribute("aria-pressed", o === b));
+    render();
+  }));
+
+  // selector de curso (uno por vez)
+  const EXCLUIDOS = ["Higiénico Sanitario - General"];
+  const GRUPOS_CURSO = ["Tatuaje", "Higiénico Sanitario", "Otros"];
+  const PRIMEROS = ["Tatuaje Madrid", "Tatuaje Barcelona", "Tatuaje Valencia", "Tatuaje Bilbao", "Tatuaje Vigo",
+    "Higiénico Sanitario - Madrid", "Higiénico Sanitario - Barcelona"];
+  const totalCurso = c => c.valores.reduce((a, v) => a + v, 0);
+  const grupoCurso = n => n.startsWith("Tatuaje") ? "Tatuaje" : n.startsWith("Higiénico Sanitario") ? "Higiénico Sanitario" : "Otros";
+  const ordenCurso = n => { const i = PRIMEROS.indexOf(n); return i < 0 ? 99 : i; };
+  const listaCursos = D.cursos.filter(c => !EXCLUIDOS.includes(c.nombre) && totalCurso(c) > 0)
+    .sort((a, b) => GRUPOS_CURSO.indexOf(grupoCurso(a.nombre)) - GRUPOS_CURSO.indexOf(grupoCurso(b.nombre)) ||
+      ordenCurso(a.nombre) - ordenCurso(b.nombre) || (a.nombre === "Sin curso") - (b.nombre === "Sin curso") ||
+      a.nombre.localeCompare(b.nombre, "es"))
+    .map(c => c.nombre);
+  let cursoSel = listaCursos.includes("Tatuaje Madrid") ? "Tatuaje Madrid" : listaCursos[0];
+  const ddPanel = document.getElementById("dd-panel"), dd = document.getElementById("dd-cursos");
+  function pintarSelector() {
+    let html = "", grupoPrev = "";
+    listaCursos.forEach(n => {
+      const g = grupoCurso(n);
+      if (g !== grupoPrev) { html += `<div class="grupo">${g}</div>`; grupoPrev = g; }
+      const tot = totalCurso(D.cursos.find(c => c.nombre === n));
+      html += `<label><input type="radio" name="curso" value="${n}" ${n === cursoSel ? "checked" : ""}>${n}<small>${fmt(tot)}</small></label>`;
+    });
+    ddPanel.innerHTML = html;
+    document.getElementById("dd-label").textContent = "Curso: " + cursoSel;
+  }
+  ddPanel.addEventListener("change", e => {
+    if (e.target.name !== "curso") return;
+    cursoSel = e.target.value;
+    dd.open = false;
+    pintarSelector(); render();
+  });
+  document.addEventListener("click", e => { if (dd.open && !e.composedPath().includes(dd)) dd.open = false; });
+  pintarSelector();
 
   // ---- filtros de mes ----
   const selDesde = document.getElementById("desde"), selHasta = document.getElementById("hasta");
@@ -241,22 +305,98 @@ td.heat { color: var(--ink); }
     });
   }
 
+  // ---- gráfico combinado: barras agrupadas (eje izquierdo) + una línea (eje derecho) ----
+  function comboChart(container, labels, bars, line, opts) {
+    container.innerHTML = "";
+    const W = Math.max(container.clientWidth, 280), H = opts.height || 280;
+    const m = { t: 34, r: 44, b: 26, l: 40 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const max = Math.max(4, niceMax(Math.max(1, ...bars.flatMap(b => b.values)) * 1.1));
+    const maxR = niceMax(Math.max(4, ...line.values.filter(isFinite)) * 1.15);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.title }, container);
+    const y = v => m.t + ih - (v / max) * ih;
+    const yR = v => m.t + ih - (v / maxR) * ih;
+    for (let k = 0; k <= 4; k++) {
+      el("line", { x1: m.l, x2: W - m.r, y1: y((max / 4) * k), y2: y((max / 4) * k), stroke: k ? css("--grid") : css("--axis") }, svg);
+      el("text", { x: m.l - 6, y: y((max / 4) * k) + 4, "text-anchor": "end" }, svg).textContent = fmt((max / 4) * k);
+      el("text", { x: W - m.r + 6, y: y((max / 4) * k) + 4, "text-anchor": "start" }, svg).textContent = line.axisFormat((maxR / 4) * k);
+    }
+    el("text", { x: 4, y: 12, "text-anchor": "start", class: "lbl" }, svg).textContent = "Negocios";
+    el("text", { x: W - 4, y: 12, "text-anchor": "end", class: "lbl" }, svg).textContent = line.name;
+    const band = iw / labels.length, gw = Math.min(56, band * 0.7), bw = (gw - 2 * (bars.length - 1)) / bars.length;
+    const salto = Math.ceil(44 / band), etiquetas = band > 44;
+    const cx = i => m.l + band * i + band / 2;
+    labels.forEach((lab, i) => {
+      bars.forEach((b, j) => {
+        const v = b.values[i]; if (!(v > 0)) return;
+        const x0 = cx(i) - gw / 2 + j * (bw + 2), y1 = y(v), y0 = y(0), r = Math.min(4, y0 - y1, bw / 2);
+        el("path", { d: `M${x0},${y0} V${y1 + r} Q${x0},${y1} ${x0 + r},${y1} H${x0 + bw - r} Q${x0 + bw},${y1} ${x0 + bw},${y1 + r} V${y0} Z`, fill: b.color }, svg);
+        if (etiquetas) el("text", { x: x0 + bw / 2, y: y1 - 4, "text-anchor": "middle", class: "lbl" }, svg).textContent = fmt(v);
+      });
+      if (i % salto === 0) el("text", { x: cx(i), y: H - 8, "text-anchor": "middle" }, svg).textContent = mesCorto(lab);
+    });
+    // línea: un mes sin leads (división por cero) corta el trazo
+    let d = "", abierto = false;
+    line.values.forEach((v, i) => {
+      if (!isFinite(v)) { abierto = false; return; }
+      d += (abierto ? "L" : "M") + cx(i) + "," + yR(v) + " "; abierto = true;
+    });
+    el("path", { d, fill: "none", stroke: line.color, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+    line.values.forEach((v, i) => {
+      if (!isFinite(v)) return;
+      el("circle", { cx: cx(i), cy: yR(v), r: 4, fill: line.color, stroke: css("--surface"), "stroke-width": 2 }, svg);
+      if (!etiquetas) return;
+      const topes = bars.map(b => y(b.values[i] || 0) - 4); // altura de las etiquetas de las barras de ese mes
+      let ty = yR(v) - 9;
+      if (topes.some(t => Math.abs(t - ty) < 13) && yR(v) + 17 < m.t + ih - 4) ty = yR(v) + 17;
+      if (topes.some(t => Math.abs(t - ty) < 13)) ty = yR(v) - 9;
+      el("text", { x: cx(i), y: ty, "text-anchor": "middle", class: "lbl halo" }, svg).textContent = line.format(v);
+    });
+    const cross = el("line", { y1: m.t, y2: m.t + ih, stroke: css("--axis"), opacity: 0 }, svg);
+    labels.forEach((lab, i) => {
+      const hit = el("rect", { x: m.l + band * i, y: m.t, width: band, height: ih, fill: "transparent" }, svg);
+      hit.addEventListener("mousemove", e => {
+        cross.setAttribute("x1", cx(i)); cross.setAttribute("x2", cx(i)); cross.setAttribute("opacity", 1);
+        showTip(e, mesLargo(lab), bars.map(b => ({ name: b.name, value: fmt(b.values[i]), color: b.color }))
+          .concat([{ name: line.name, value: line.format(line.values[i]), color: line.color }]));
+      });
+      hit.addEventListener("mouseleave", () => { hideTip(); cross.setAttribute("opacity", 0); });
+    });
+  }
+
   // ---- gráfico de líneas (una o varias series, un solo eje) ----
   function lineChart(container, labels, series, opts) {
     container.innerHTML = "";
     const W = Math.max(container.clientWidth, 280), H = opts.height || 220;
-    const m = { t: 22, r: 16, b: 26, l: 40 };
+    // series con axis: "right" usan un segundo eje a la derecha
+    const der = series.filter(se => se.axis === "right"), izq = series.filter(se => se.axis !== "right");
+    const m = { t: der.length ? 34 : 22, r: der.length ? 44 : 16, b: 26, l: 40 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const f = opts.format || fmt, fe = opts.axisFormat || fmt;
-    const todos = series.flatMap(se => se.values).filter(isFinite);
-    const max = niceMax(Math.max(...todos) * 1.1);
+    const maxDe = list => Math.max(...list.flatMap(se => se.values).filter(isFinite));
+    const max = niceMax(maxDe(izq) * 1.1);
+    // la serie derecha ocupa la mitad inferior para que sus etiquetas no se crucen con la izquierda
+    const maxR = der.length ? niceMax(maxDe(der) / 0.55) : 0;
     const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.title }, container);
     const x = i => m.l + (labels.length === 1 ? iw / 2 : (iw * i) / (labels.length - 1));
     const y = v => m.t + ih - (v / max) * ih;
+    const yR = v => m.t + ih - (v / maxR) * ih;
     for (let k = 0; k <= 4; k++) {
       const v = (max / 4) * k;
       el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: k ? css("--grid") : css("--axis") }, svg);
       el("text", { x: m.l - 6, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = fe(v);
+      if (der.length) el("text", { x: W - m.r + 6, y: y(v) + 4, "text-anchor": "start" }, svg).textContent = fe((maxR / 4) * k);
+    }
+    if (der.length) {
+      // títulos de eje con la muestra de color de su serie
+      const titulo = (se, xx, anchor) => {
+        const t = el("text", { x: xx, y: 12, "text-anchor": anchor, class: "lbl" }, svg);
+        t.textContent = se.name;
+        const w = t.getComputedTextLength();
+        el("rect", { x: anchor === "start" ? xx - 14 : xx - w - 14, y: 4, width: 9, height: 9, rx: 2, fill: se.color }, svg);
+      };
+      titulo(izq[0], m.l - 30 + 14, "start");
+      titulo(der[0], W - 4, "end");
     }
     if (isFinite(opts.avg)) {
       el("line", { x1: m.l, x2: W - m.r, y1: y(opts.avg), y2: y(opts.avg), stroke: css("--muted"), "stroke-dasharray": "4 4" }, svg);
@@ -267,13 +407,16 @@ td.heat { color: var(--ink); }
       if (i % salto === 0) el("text", { x: x(i), y: H - 8, "text-anchor": "middle" }, svg).textContent = mesCorto(lab);
     });
     series.forEach(se => {
-      const pts = se.values.map((v, i) => [x(i), y(v)]);
+      const yy = se.axis === "right" ? yR : y;
+      const pts = se.values.map((v, i) => [x(i), yy(v)]);
       el("path", { d: pts.map((p, i) => (i ? "L" : "M") + p[0] + "," + p[1]).join(" "), fill: "none", stroke: se.color, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
       pts.forEach(p => el("circle", { cx: p[0], cy: p[1], r: 4, fill: se.color, stroke: css("--surface"), "stroke-width": 2 }, svg));
       // etiquetas: todas (como en HubSpot) si caben; si no, máximo, mínimo y último
       const idx = opts.allLabels && iw / labels.length > 40 ? se.values.map((_, i) => i)
+        : opts.noLabels ? []
         : [...new Set([se.values.indexOf(Math.max(...se.values)), se.values.indexOf(Math.min(...se.values)), se.values.length - 1])];
-      idx.forEach(i => el("text", { x: pts[i][0], y: pts[i][1] - 9, "text-anchor": "middle", class: "lbl" }, svg).textContent = f(se.values[i]));
+      const dy = se.axis === "right" ? 17 : -9; // etiquetas de la serie derecha, debajo del punto
+      idx.forEach(i => el("text", { x: pts[i][0], y: pts[i][1] + dy, "text-anchor": "middle", class: "lbl" }, svg).textContent = f(se.values[i]));
     });
     const cross = el("line", { y1: m.t, y2: m.t + ih, stroke: css("--axis"), opacity: 0 }, svg);
     const hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" }, svg);
@@ -311,24 +454,24 @@ td.heat { color: var(--ink); }
     const etapas = D.etapas.map(e => ({ ...e, valores: cut(e.valores) }));
     const leads = meses.map((_, i) => sum(etapas.map(e => e.valores[i])));
     const won = etapas.find(e => e.id === "closedwon").valores;
-    const lost = etapas.find(e => e.id === "closedlost").valores;
     const tasa = leads.map((l, i) => (l ? (won[i] * 100) / l : NaN));
-    const totL = sum(leads), totW = sum(won), totLost = sum(lost);
-    const abiertos = totL - totW - totLost;
+    const totL = sum(leads), totW = sum(won);
 
-    document.getElementById("kpis").innerHTML = [
-      ["Leads totales", fmt(totL), meses.length + " meses · media " + fmt(Math.round(totL / meses.length)) + "/mes"],
-      ["Matriculados", fmt(totW), "media " + fmt(Math.round((totW / meses.length) * 10) / 10) + "/mes"],
-      ["% de matriculación", pct((totW * 100) / totL), "matriculados ÷ leads del período"],
-      ["Leads abiertos", fmt(abiertos), fmt(totLost) + " perdidos (" + pct((totLost * 100) / totL) + ")"],
-    ].map(k => `<div class="card kpi"><div class="label">${k[0]}</div><div class="value">${k[1]}</div><div class="hint">${k[2]}</div></div>`).join("");
-
+    // dos formas de contar los matriculados del mes (el switch elige)
+    const wonMes = cut(D.entradas.find(e => e.id === "closedwon").valores);
+    const wonLvm = modoLvm === "mes" ? wonMes : won;
+    document.getElementById("desc-lvm").textContent = modoLvm === "mes"
+      ? `Negocios creados cada mes (eje izquierdo) y negocios que entraron en «Matriculados» ese mes, sin importar cuándo se crearon (eje derecho) · total: ${fmt(sum(wonMes))} matriculados, ${pct((sum(wonMes) * 100) / totL)} de los leads`
+      : `Negocios creados cada mes (eje izquierdo) y cuántos de ellos están hoy en «Matriculados» (eje derecho) · total: ${fmt(totW)} matriculados, ${pct((totW * 100) / totL)} de los leads`;
     const lvm = [
       { name: "Leads (negocios)", values: leads, color: css("--s2") },
-      { name: "Matriculados", values: won, color: css("--s3") },
+      { name: "Matriculados", values: wonLvm, color: css("--s3"), axis: "right" },
     ];
-    document.getElementById("l-lvm").innerHTML = lvm.map(se => `<span><i style="background:${se.color}"></i>${se.name}</span>`).join("");
-    lineChart(document.getElementById("c-lvm"), meses, lvm, { title: "Leads totales vs Matriculados", height: 280, allLabels: true });
+    lineChart(document.getElementById("c-lvm"), meses, lvm, {
+      title: "Leads totales vs Matriculados", height: 280, allLabels: true,
+      rows: i => lvm.map(se => ({ name: se.name, value: fmt(se.values[i]), color: se.color }))
+        .concat([{ name: "% matriculados / leads", value: pct(leads[i] ? (wonLvm[i] * 100) / leads[i] : NaN) }]),
+    });
 
     lineChart(document.getElementById("c-pct"), meses, [{ name: "% matriculación", values: tasa, color: css("--s3") }], {
       title: "% de matriculación por mes", avg: (totW * 100) / totL, format: pct,
@@ -343,26 +486,31 @@ td.heat { color: var(--ink); }
       meses.map((m, i) => [mesLargo(m), leads[i], won[i], pct(tasa[i])]),
       ["Total", fmt(totL), fmt(totW), pct((totW * 100) / totL)]);
 
-    // ciudades: el color sigue a la ciudad aunque se oculten otras
-    const ciudades = D.ciudades.map((c, i) => ({ name: c.nombre, values: cut(c.valores), color: css(ciudadColor[i]) }));
-    document.getElementById("l-city").innerHTML = ciudades.map(c =>
-      `<span data-c="${c.name}" class="${ocultas.has(c.name) ? "off" : ""}"><i style="background:${c.color}"></i>${c.name}</span>`).join("");
-    document.querySelectorAll("#l-city span").forEach(s => s.addEventListener("click", () => {
-      const n = s.dataset.c;
-      ocultas.has(n) ? ocultas.delete(n) : ocultas.add(n);
-      if (ocultas.size === ciudades.length) ocultas.delete(n);
-      render();
-    }));
-    barChart(document.getElementById("c-city"), meses, ciudades.filter(c => !ocultas.has(c.name)), { title: "Leads por ciudad", height: 280 });
-    const cityTot = meses.map((_, i) => sum(ciudades.map(c => c.values[i])));
-    table(document.getElementById("t-city"), ["Ciudad"].concat(meses.map(mesCorto), ["Total"]),
-      ciudades.map(c => [c.name].concat(c.values, [sum(c.values)])),
-      ["Total"].concat(cityTot.map(fmt), [fmt(sum(cityTot))]));
+    // curso elegido: leads y matriculados en barras, % de matriculación en línea
+    const cur = D.cursos.find(c => c.nombre === cursoSel);
+    const cLeads = cut(cur.valores), cWon = cut(cur.matriculados || cur.valores.map(() => 0));
+    const cTasa = cLeads.map((l, i) => (l ? (cWon[i] * 100) / l : NaN));
+    const barrasCurso = [
+      { name: "Leads", values: cLeads, color: css("--s2") },
+      { name: "Matriculados", values: cWon, color: css("--s3") },
+    ];
+    const lineaCurso = { name: "% matriculación", values: cTasa, color: css("--s7"), format: pct,
+      axisFormat: v => v.toLocaleString("es-ES", { maximumFractionDigits: 1 }) + "%" };
+    document.getElementById("l-city").innerHTML = barrasCurso.concat([lineaCurso]).map((c, k) =>
+      `<span><i style="background:${c.color}${k === 2 ? ";height:3px;border-radius:2px" : ""}"></i>${c.name}</span>`).join("");
+    comboChart(document.getElementById("c-city"), meses, barrasCurso, lineaCurso, { title: "Leads y matriculados de " + cursoSel, height: 300 });
+    const tL = sum(cLeads), tW = sum(cWon), tP = pct(tL ? (tW * 100) / tL : NaN);
+    document.getElementById("desc-curso").textContent =
+      `${cursoSel} en el período: ${fmt(tL)} leads, ${fmt(tW)} matriculados (${tP}) · barras en el eje izquierdo, % en el derecho`;
+    table(document.getElementById("t-city"), [cursoSel].concat(meses.map(mesCorto), ["Total"]), [
+      ["Leads"].concat(cLeads, [tL]),
+      ["Matriculados"].concat(cWon, [tW]),
+      ["% matriculación"].concat(cTasa.map(pct), [tP]),
+    ]);
 
-    const conDatos = etapas.filter(e => sum(e.valores) > 0);
+    const entradas = D.entradas.map(e => ({ ...e, valores: cut(e.valores) })).filter(e => sum(e.valores) > 0);
     table(document.getElementById("t-stage"), ["Etapa"].concat(meses.map(mesCorto), ["Total"]),
-      conDatos.map(e => [e.nombre].concat(e.valores, [sum(e.valores)])),
-      ["Total"].concat(leads.map(fmt), [fmt(totL)]), true);
+      entradas.map(e => [e.nombre].concat(e.valores, [sum(e.valores)])), null, true);
   }
 
   render();

@@ -26,7 +26,7 @@ API = "https://api.hubapi.com/crm/v3/objects/deals/search"
 # Las mismas etapas y cursos que filtran los informes del panel de HubSpot.
 ETAPAS = [
     ("appointmentscheduled", "Interesados"),
-    ("qualifiedtobuy", "Qualified to buy"),
+    ("qualifiedtobuy", "Cualificados"),
     ("presentationscheduled", "Primer intento"),
     ("112773443", "Segundo intento"),
     ("decisionmakerboughtin", "Interacción"),
@@ -35,11 +35,41 @@ ETAPAS = [
     ("closedwon", "Matriculados"),
     ("closedlost", "Perdidos"),
 ]
-CIUDADES = ["Madrid", "Barcelona", "Valencia", "Bilbao", "Vigo"]
 
 
 def ms(d):
     return int(datetime(d.year, d.month, d.day, tzinfo=TZ).timestamp() * 1000)
+
+
+def peticion(token, body):
+    req = urllib.request.Request(
+        API, data=json.dumps(body).encode(), method="POST",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+    )
+    for intento in range(5):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and intento < 4:  # límite de peticiones: esperar y reintentar
+                time.sleep(2 ** intento)
+                continue
+            sys.exit(f"Error de HubSpot {e.code}: {e.read().decode()[:500]}")
+
+
+def contar_entradas(token, etapa, desde, hasta):
+    """Cuántos negocios entraron en la etapa entre [desde, hasta) según hs_v2_date_entered_<etapa>."""
+    prop = f"hs_v2_date_entered_{etapa}"
+    body = {
+        "filterGroups": [{"filters": [
+            {"propertyName": prop, "operator": "GTE", "value": str(ms(desde))},
+            {"propertyName": prop, "operator": "LT", "value": str(ms(hasta))},
+        ]}],
+        "properties": ["hs_object_id"],
+        "limit": 1,
+    }
+    time.sleep(0.25)
+    return peticion(token, body)["total"]
 
 
 def buscar(token, desde, hasta):
@@ -58,20 +88,7 @@ def buscar(token, desde, hasta):
         }
         if after:
             body["after"] = after
-        req = urllib.request.Request(
-            API, data=json.dumps(body).encode(), method="POST",
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        )
-        for intento in range(5):
-            try:
-                with urllib.request.urlopen(req, timeout=60) as r:
-                    data = json.load(r)
-                break
-            except urllib.error.HTTPError as e:
-                if e.code == 429 and intento < 4:  # límite de peticiones: esperar y reintentar
-                    time.sleep(2 ** intento)
-                    continue
-                sys.exit(f"Error de HubSpot {e.code}: {e.read().decode()[:500]}")
+        data = peticion(token, body)
         out += data["results"]
         after = data.get("paging", {}).get("next", {}).get("after")
         if not after:
@@ -94,17 +111,21 @@ def main():
 
     # Una búsqueda por mes: la API de búsqueda corta en 10.000 resultados por consulta.
     meses, negocios, d = [], [], desde
+    entradas = {e: [] for e, _ in ETAPAS}
     while d <= hoy:
         sig = (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+        fin = min(sig, hoy + timedelta(days=1))
         meses.append(d.strftime("%Y-%m"))
-        lote = buscar(token, d, min(sig, hoy + timedelta(days=1)))
+        lote = buscar(token, d, fin)
         print(f"{meses[-1]}: {len(lote)} negocios")
         negocios += lote
+        for e, _ in ETAPAS:
+            entradas[e].append(contar_entradas(token, e, d, fin))
         d = sig
 
     idx = {m: i for i, m in enumerate(meses)}
     etapas = {e: [0] * len(meses) for e, _ in ETAPAS}
-    ciudades = {c: [0] * len(meses) for c in CIUDADES}
+    cursos, matriculados = {}, {}
     for n in negocios:
         p = n["properties"]
         creado = datetime.fromisoformat(p["createdate"].replace("Z", "+00:00")).astimezone(TZ)
@@ -113,9 +134,11 @@ def main():
             continue
         if p.get("dealstage") in etapas:
             etapas[p["dealstage"]][i] += 1
-        curso = (p.get("curso") or "").replace("Tatuaje ", "")
-        if curso in ciudades:
-            ciudades[curso][i] += 1
+        curso = p.get("curso") or "Sin curso"
+        cursos.setdefault(curso, [0] * len(meses))[i] += 1
+        matriculados.setdefault(curso, [0] * len(meses))
+        if p.get("dealstage") == "closedwon":
+            matriculados[curso][i] += 1
 
     data = {
         "generado": datetime.now(TZ).isoformat(timespec="seconds"),
@@ -123,7 +146,8 @@ def main():
         "hasta": hoy.isoformat(),
         "meses": meses,
         "etapas": [{"id": e, "nombre": nom, "valores": etapas[e]} for e, nom in ETAPAS],
-        "ciudades": [{"nombre": c, "valores": ciudades[c]} for c in CIUDADES],
+        "entradas": [{"id": e, "nombre": nom, "valores": entradas[e]} for e, nom in ETAPAS],
+        "cursos": [{"nombre": c, "valores": v, "matriculados": matriculados[c]} for c, v in sorted(cursos.items())],
     }
     destino = Path(__file__).with_name("data.js")
     destino.write_text(
