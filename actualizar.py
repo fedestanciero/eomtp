@@ -72,6 +72,30 @@ def contar_entradas(token, etapa, desde, hasta):
     return peticion(token, body)["total"]
 
 
+def matriculas_por_curso(token, desde, hasta):
+    """Negocios que entraron en Matriculados entre [desde, hasta), contados por curso."""
+    prop, after, cuenta = "hs_v2_date_entered_closedwon", None, {}
+    while True:
+        body = {
+            "filterGroups": [{"filters": [
+                {"propertyName": prop, "operator": "GTE", "value": str(ms(desde))},
+                {"propertyName": prop, "operator": "LT", "value": str(ms(hasta))},
+            ]}],
+            "properties": ["curso"],
+            "limit": 200,
+        }
+        if after:
+            body["after"] = after
+        data = peticion(token, body)
+        for n in data["results"]:
+            curso = n["properties"].get("curso") or "Sin curso"
+            cuenta[curso] = cuenta.get(curso, 0) + 1
+        after = data.get("paging", {}).get("next", {}).get("after")
+        if not after:
+            return cuenta
+        time.sleep(0.25)
+
+
 def buscar(token, desde, hasta):
     """Devuelve todos los negocios creados en [desde, hasta) con las etapas del panel."""
     after, out = None, []
@@ -112,6 +136,7 @@ def main():
     # Una búsqueda por mes: la API de búsqueda corta en 10.000 resultados por consulta.
     meses, negocios, d = [], [], desde
     entradas = {e: [] for e, _ in ETAPAS}
+    matriculas_mes = []  # por mes: {curso: matrículas cerradas}
     while d <= hoy:
         sig = (d.replace(day=28) + timedelta(days=4)).replace(day=1)
         fin = min(sig, hoy + timedelta(days=1))
@@ -121,6 +146,7 @@ def main():
         negocios += lote
         for e, _ in ETAPAS:
             entradas[e].append(contar_entradas(token, e, d, fin))
+        matriculas_mes.append(matriculas_por_curso(token, d, fin))
         d = sig
 
     idx = {m: i for i, m in enumerate(meses)}
@@ -147,7 +173,10 @@ def main():
         "meses": meses,
         "etapas": [{"id": e, "nombre": nom, "valores": etapas[e]} for e, nom in ETAPAS],
         "entradas": [{"id": e, "nombre": nom, "valores": entradas[e]} for e, nom in ETAPAS],
-        "cursos": [{"nombre": c, "valores": v, "matriculados": matriculados[c]} for c, v in sorted(cursos.items())],
+        "cursos": [{"nombre": c, "valores": cursos.get(c, [0] * len(meses)),
+                    "matriculados": matriculados.get(c, [0] * len(meses)),
+                    "matriculas_mes": [mm.get(c, 0) for mm in matriculas_mes]}
+                   for c in sorted(set(cursos) | {c for mm in matriculas_mes for c in mm})],
     }
     destino = Path(__file__).with_name("data.js")
     destino.write_text(
