@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de Leads</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+  --heat-0: #fcfcfb; --heat-1: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
+    --muted: #898781; --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+    --heat-0: #1a1a19; --heat-1: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7;
+  --muted: #898781; --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  --heat-0: #1a1a19; --heat-1: #3987e5;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+.sub { color: var(--ink-2); margin-top: 2px; }
+.meta { color: var(--muted); font-size: 12px; text-align: right; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+.filters label { color: var(--ink-2); font-size: 13px; }
+select {
+  font: inherit; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+}
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
+.kpi .label { color: var(--ink-2); font-size: 13px; }
+.kpi .value { font-size: 30px; font-weight: 650; margin-top: 4px; letter-spacing: -0.02em; }
+.kpi .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.span2 { grid-column: 1 / -1; }
+@media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.card h2 { font-size: 15px; font-weight: 600; margin: 0; }
+.card .desc { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.legend span.off { opacity: .4; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart text.lbl { fill: var(--ink-2); font-size: 11px; }
+details { margin-top: 8px; }
+summary { cursor: pointer; color: var(--ink-2); font-size: 12px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-2); font-weight: 600; }
+tr.total td { font-weight: 650; border-top: 1px solid var(--axis); }
+td.heat { color: var(--ink); }
+#tip {
+  position: fixed; pointer-events: none; z-index: 10; opacity: 0;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  transition: opacity .08s; min-width: 120px;
+}
+#tip .t { font-weight: 600; margin-bottom: 4px; }
+#tip .r { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+#tip .r b { font-weight: 600; font-variant-numeric: tabular-nums; }
+#tip .r i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Panel de Leads</h1>
+      <div class="sub">Negocios creados en HubSpot · leads, matriculados y ciudades</div>
+    </div>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="filters">
+    <label for="desde">Desde</label><select id="desde"></select>
+    <label for="hasta">Hasta</label><select id="hasta"></select>
+  </div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <div class="card span2">
+      <h2>Leads totales vs Matriculados</h2>
+      <p class="desc">Negocios creados cada mes y cuántos de ellos están hoy en «Matriculados»</p>
+      <div class="legend" id="l-lvm"></div>
+      <div class="chart" id="c-lvm"></div>
+    </div>
+    <div class="card span2">
+      <h2>% de matriculación por mes</h2>
+      <p class="desc">Matriculados ÷ leads creados en el mes. La línea discontinua es la media del período.</p>
+      <div class="chart" id="c-pct"></div>
+      <details><summary>Ver tabla</summary><div class="tablewrap" id="t-pct"></div></details>
+    </div>
+    <div class="card span2">
+      <h2>Leads totales por ciudad</h2>
+      <p class="desc">Cursos de tatuaje por ciudad · haz clic en la leyenda para ocultar una ciudad</p>
+      <div class="legend" id="l-city"></div>
+      <div class="chart" id="c-city"></div>
+      <details><summary>Ver tabla</summary><div class="tablewrap" id="t-city"></div></details>
+    </div>
+    <div class="card span2">
+      <h2>Leads por etapa</h2>
+      <p class="desc">Etapa actual de los negocios según su mes de creación</p>
+      <div class="tablewrap" id="t-stage"></div>
+    </div>
+  </section>
+</div>
+<div id="tip"></div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  const D = window.PANEL_DATA;
+  const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const fmt = n => n.toLocaleString("es-ES");
+  const pct = n => (isFinite(n) ? n.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " %" : "–");
+  const mesCorto = m => MESES[+m.slice(5) - 1] + " " + m.slice(2, 4);
+  const mesLargo = m => MESES[+m.slice(5) - 1] + " " + m.slice(0, 4);
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const NS = "http://www.w3.org/2000/svg";
+  const tip = document.getElementById("tip");
+  const ciudadColor = ["--s1", "--s2", "--s3", "--s4", "--s5"];
+  const ocultas = new Set();
+
+  // ---- filtros de mes ----
+  const selDesde = document.getElementById("desde"), selHasta = document.getElementById("hasta");
+  D.meses.forEach((m, i) => {
+    selDesde.add(new Option(mesLargo(m), i));
+    selHasta.add(new Option(mesLargo(m), i));
+  });
+  selDesde.value = 0; selHasta.value = D.meses.length - 1;
+  [selDesde, selHasta].forEach(s => s.addEventListener("change", () => {
+    if (+selDesde.value > +selHasta.value) (s === selDesde ? selHasta : selDesde).value = s.value;
+    render();
+  }));
+
+  document.getElementById("meta").innerHTML =
+    "Datos de HubSpot · actualizado " + new Date(D.generado).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }) +
+    "<br>Período disponible: " + D.desde + " → " + D.hasta;
+
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function niceMax(v) {
+    if (v <= 0) return 1;
+    // máximo = 4 marcas con un paso "redondo"
+    const s = v / 4, p = Math.pow(10, Math.floor(Math.log10(s))), f = s / p;
+    return [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].find(n => f <= n) * p * 4;
+  }
+  function showTip(evt, title, rows) {
+    tip.innerHTML = '<div class="t">' + title + "</div>" + rows.map(r =>
+      '<div class="r"><span>' + (r.color ? '<i style="background:' + r.color + '"></i>' : "") + r.name + "</span><b>" + r.value + "</b></div>").join("");
+    tip.style.opacity = 1;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = evt.clientX + 14, y = evt.clientY - h - 10;
+    if (x + w > innerWidth - 8) x = evt.clientX - w - 14;
+    if (y < 8) y = evt.clientY + 16;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  const hideTip = () => (tip.style.opacity = 0);
+
+  // ---- gráfico de barras (simple o apilado) ----
+  function barChart(container, labels, series, opts) {
+    container.innerHTML = "";
+    const W = Math.max(container.clientWidth, 280), H = opts.height || 240;
+    const m = { t: 18, r: 8, b: 26, l: 40 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const totals = labels.map((_, i) => series.reduce((s, se) => s + se.values[i], 0));
+    const max = niceMax(Math.max(...totals));
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.title }, container);
+    const y = v => m.t + ih - (v / max) * ih;
+    for (let k = 0; k <= 4; k++) {
+      const v = (max / 4) * k;
+      el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: k ? css("--grid") : css("--axis"), "stroke-width": 1 }, svg);
+      el("text", { x: m.l - 6, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = fmt(v);
+    }
+    const band = iw / labels.length, bw = Math.min(44, band * 0.62);
+    const showLbl = band > 34;
+    const salto = Math.ceil(44 / band); // en pantallas estrechas, una etiqueta de mes cada N
+    labels.forEach((lab, i) => {
+      const cx = m.l + band * i + band / 2;
+      const g = el("g", {}, svg);
+      let acc = 0;
+      const visibles = series.filter(se => se.values[i] > 0);
+      visibles.forEach((se, j) => {
+        const v = se.values[i];
+        const y0 = y(acc), y1 = y(acc + v);
+        const top = j === visibles.length - 1;
+        const gap = j > 0 ? 2 : 0;
+        const hgt = Math.max(0, y0 - y1 - gap);
+        if (top) {
+          const r = Math.min(4, hgt, bw / 2);
+          el("path", { d: `M${cx - bw / 2},${y0 - gap} V${y1 + r} Q${cx - bw / 2},${y1} ${cx - bw / 2 + r},${y1} H${cx + bw / 2 - r} Q${cx + bw / 2},${y1} ${cx + bw / 2},${y1 + r} V${y0 - gap} Z`, fill: se.color }, g);
+        } else {
+          el("rect", { x: cx - bw / 2, y: y1, width: bw, height: hgt, fill: se.color }, g);
+        }
+        acc += v;
+      });
+      if (showLbl && totals[i] > 0)
+        el("text", { x: cx, y: y(totals[i]) - 5, "text-anchor": "middle", class: "lbl" }, svg).textContent = fmt(totals[i]);
+      if (i % salto === 0) el("text", { x: cx, y: H - 8, "text-anchor": "middle" }, svg).textContent = mesCorto(lab);
+      const hit = el("rect", { x: m.l + band * i, y: m.t, width: band, height: ih, fill: "transparent" }, svg);
+      hit.addEventListener("mousemove", e => {
+        const rows = series.slice().reverse().map(se => ({ name: se.name, value: fmt(se.values[i]), color: se.color }));
+        if (series.length > 1) rows.push({ name: "Total", value: fmt(totals[i]) });
+        showTip(e, mesLargo(lab), rows);
+        g.style.opacity = 1; svg.querySelectorAll("g").forEach(o => { if (o !== g) o.style.opacity = .55; });
+      });
+      hit.addEventListener("mouseleave", () => { hideTip(); svg.querySelectorAll("g").forEach(o => (o.style.opacity = 1)); });
+    });
+  }
+
+  // ---- gráfico de líneas (una o varias series, un solo eje) ----
+  function lineChart(container, labels, series, opts) {
+    container.innerHTML = "";
+    const W = Math.max(container.clientWidth, 280), H = opts.height || 220;
+    const m = { t: 22, r: 16, b: 26, l: 40 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const f = opts.format || fmt, fe = opts.axisFormat || fmt;
+    const todos = series.flatMap(se => se.values).filter(isFinite);
+    const max = niceMax(Math.max(...todos) * 1.1);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.title }, container);
+    const x = i => m.l + (labels.length === 1 ? iw / 2 : (iw * i) / (labels.length - 1));
+    const y = v => m.t + ih - (v / max) * ih;
+    for (let k = 0; k <= 4; k++) {
+      const v = (max / 4) * k;
+      el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: k ? css("--grid") : css("--axis") }, svg);
+      el("text", { x: m.l - 6, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = fe(v);
+    }
+    if (isFinite(opts.avg)) {
+      el("line", { x1: m.l, x2: W - m.r, y1: y(opts.avg), y2: y(opts.avg), stroke: css("--muted"), "stroke-dasharray": "4 4" }, svg);
+      el("text", { x: W - m.r, y: y(opts.avg) - 5, "text-anchor": "end" }, svg).textContent = "media " + f(opts.avg);
+    }
+    const salto = Math.ceil(44 / (iw / Math.max(1, labels.length - 1)));
+    labels.forEach((lab, i) => {
+      if (i % salto === 0) el("text", { x: x(i), y: H - 8, "text-anchor": "middle" }, svg).textContent = mesCorto(lab);
+    });
+    series.forEach(se => {
+      const pts = se.values.map((v, i) => [x(i), y(v)]);
+      el("path", { d: pts.map((p, i) => (i ? "L" : "M") + p[0] + "," + p[1]).join(" "), fill: "none", stroke: se.color, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+      pts.forEach(p => el("circle", { cx: p[0], cy: p[1], r: 4, fill: se.color, stroke: css("--surface"), "stroke-width": 2 }, svg));
+      // etiquetas: todas (como en HubSpot) si caben; si no, máximo, mínimo y último
+      const idx = opts.allLabels && iw / labels.length > 40 ? se.values.map((_, i) => i)
+        : [...new Set([se.values.indexOf(Math.max(...se.values)), se.values.indexOf(Math.min(...se.values)), se.values.length - 1])];
+      idx.forEach(i => el("text", { x: pts[i][0], y: pts[i][1] - 9, "text-anchor": "middle", class: "lbl" }, svg).textContent = f(se.values[i]));
+    });
+    const cross = el("line", { y1: m.t, y2: m.t + ih, stroke: css("--axis"), opacity: 0 }, svg);
+    const hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", e => {
+      const r = svg.getBoundingClientRect();
+      const px = (e.clientX - r.left) * (W / r.width);
+      let i = Math.round(((px - m.l) / iw) * (labels.length - 1));
+      i = Math.max(0, Math.min(labels.length - 1, i));
+      cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", 1);
+      showTip(e, mesLargo(labels[i]), opts.rows ? opts.rows(i) : series.map(se => ({ name: se.name, value: f(se.values[i]), color: se.color })));
+    });
+    hit.addEventListener("mouseleave", () => { hideTip(); cross.setAttribute("opacity", 0); });
+  }
+
+  function table(container, head, rows, totalRow, heat) {
+    let max = 0;
+    // el sombreado ignora la columna Total (la última)
+    if (heat) rows.forEach(r => r.slice(1, -1).forEach(v => (max = Math.max(max, v))));
+    const cell = (v, j, arr) => {
+      if (!heat || typeof v !== "number" || v === 0 || j === arr.length - 1) return "<td>" + (typeof v === "number" ? fmt(v) : v) + "</td>";
+      const a = Math.round((v / max) * 70);
+      return `<td class="heat" style="background:color-mix(in srgb, var(--heat-1) ${a}%, var(--heat-0))">${fmt(v)}</td>`;
+    };
+    container.innerHTML = "<table><thead><tr>" + head.map(h => "<th>" + h + "</th>").join("") + "</tr></thead><tbody>" +
+      rows.map(r => "<tr><td>" + r[0] + "</td>" + r.slice(1).map(cell).join("") + "</tr>").join("") +
+      (totalRow ? '<tr class="total">' + totalRow.map(v => "<td>" + v + "</td>").join("") + "</tr>" : "") +
+      "</tbody></table>";
+  }
+
+  function render() {
+    const a = +selDesde.value, b = +selHasta.value + 1;
+    const meses = D.meses.slice(a, b);
+    const cut = arr => arr.slice(a, b);
+    const sum = arr => arr.reduce((s, v) => s + v, 0);
+    const etapas = D.etapas.map(e => ({ ...e, valores: cut(e.valores) }));
+    const leads = meses.map((_, i) => sum(etapas.map(e => e.valores[i])));
+    const won = etapas.find(e => e.id === "closedwon").valores;
+    const lost = etapas.find(e => e.id === "closedlost").valores;
+    const tasa = leads.map((l, i) => (l ? (won[i] * 100) / l : NaN));
+    const totL = sum(leads), totW = sum(won), totLost = sum(lost);
+    const abiertos = totL - totW - totLost;
+
+    document.getElementById("kpis").innerHTML = [
+      ["Leads totales", fmt(totL), meses.length + " meses · media " + fmt(Math.round(totL / meses.length)) + "/mes"],
+      ["Matriculados", fmt(totW), "media " + fmt(Math.round((totW / meses.length) * 10) / 10) + "/mes"],
+      ["% de matriculación", pct((totW * 100) / totL), "matriculados ÷ leads del período"],
+      ["Leads abiertos", fmt(abiertos), fmt(totLost) + " perdidos (" + pct((totLost * 100) / totL) + ")"],
+    ].map(k => `<div class="card kpi"><div class="label">${k[0]}</div><div class="value">${k[1]}</div><div class="hint">${k[2]}</div></div>`).join("");
+
+    const lvm = [
+      { name: "Leads (negocios)", values: leads, color: css("--s2") },
+      { name: "Matriculados", values: won, color: css("--s3") },
+    ];
+    document.getElementById("l-lvm").innerHTML = lvm.map(se => `<span><i style="background:${se.color}"></i>${se.name}</span>`).join("");
+    lineChart(document.getElementById("c-lvm"), meses, lvm, { title: "Leads totales vs Matriculados", height: 280, allLabels: true });
+
+    lineChart(document.getElementById("c-pct"), meses, [{ name: "% matriculación", values: tasa, color: css("--s3") }], {
+      title: "% de matriculación por mes", avg: (totW * 100) / totL, format: pct,
+      axisFormat: v => v.toLocaleString("es-ES", { maximumFractionDigits: 1 }) + "%",
+      rows: i => [
+        { name: "% matriculación", value: pct(tasa[i]), color: css("--s3") },
+        { name: "Matriculados", value: fmt(won[i]) },
+        { name: "Leads", value: fmt(leads[i]) },
+      ],
+    });
+    table(document.getElementById("t-pct"), ["Mes", "Leads", "Matriculados", "% matriculación"],
+      meses.map((m, i) => [mesLargo(m), leads[i], won[i], pct(tasa[i])]),
+      ["Total", fmt(totL), fmt(totW), pct((totW * 100) / totL)]);
+
+    // ciudades: el color sigue a la ciudad aunque se oculten otras
+    const ciudades = D.ciudades.map((c, i) => ({ name: c.nombre, values: cut(c.valores), color: css(ciudadColor[i]) }));
+    document.getElementById("l-city").innerHTML = ciudades.map(c =>
+      `<span data-c="${c.name}" class="${ocultas.has(c.name) ? "off" : ""}"><i style="background:${c.color}"></i>${c.name}</span>`).join("");
+    document.querySelectorAll("#l-city span").forEach(s => s.addEventListener("click", () => {
+      const n = s.dataset.c;
+      ocultas.has(n) ? ocultas.delete(n) : ocultas.add(n);
+      if (ocultas.size === ciudades.length) ocultas.delete(n);
+      render();
+    }));
+    barChart(document.getElementById("c-city"), meses, ciudades.filter(c => !ocultas.has(c.name)), { title: "Leads por ciudad", height: 280 });
+    const cityTot = meses.map((_, i) => sum(ciudades.map(c => c.values[i])));
+    table(document.getElementById("t-city"), ["Ciudad"].concat(meses.map(mesCorto), ["Total"]),
+      ciudades.map(c => [c.name].concat(c.values, [sum(c.values)])),
+      ["Total"].concat(cityTot.map(fmt), [fmt(sum(cityTot))]));
+
+    const conDatos = etapas.filter(e => sum(e.valores) > 0);
+    table(document.getElementById("t-stage"), ["Etapa"].concat(meses.map(mesCorto), ["Total"]),
+      conDatos.map(e => [e.nombre].concat(e.valores, [sum(e.valores)])),
+      ["Total"].concat(leads.map(fmt), [fmt(totL)]), true);
+  }
+
+  render();
+  let t;
+  addEventListener("resize", () => { clearTimeout(t); t = setTimeout(render, 120); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+})();
+</script>
+</body>
+</html>
