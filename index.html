@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Panel de Leads</title>
+<title>Dashboard EOMTP España</title>
 <style>
 :root {
   color-scheme: light;
@@ -25,10 +25,21 @@ body {
   font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 .wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
-h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
-.sub { color: var(--ink-2); margin-top: 2px; }
-.meta { color: var(--muted); font-size: 12px; text-align: right; }
+/* encabezado oscuro: el logo es blanco sobre transparente */
+.top { background: #141414; color: #f0efec; }
+.top-in {
+  max-width: 1240px; margin: 0 auto; padding: 16px; display: flex; flex-wrap: wrap;
+  align-items: center; gap: 12px 20px;
+}
+.top img { height: 52px; width: auto; display: block; }
+.top .titulo { flex: 1 1 260px; min-width: 0; padding-left: 20px; border-left: 1px solid rgba(255,255,255,.18); }
+h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -0.01em; color: #fff; }
+.meta { color: #a3a29b; font-size: 12px; text-align: right; }
+@media (max-width: 640px) {
+  .top img { height: 40px; }
+  .top .titulo { flex-basis: 100%; padding-left: 0; border-left: 0; }
+  .meta { text-align: left; }
+}
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
 .filters label { color: var(--ink-2); font-size: 13px; }
 select {
@@ -58,6 +69,20 @@ select {
 .dd label { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; color: var(--ink); cursor: pointer; }
 .dd label small { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
 .vacio { color: var(--muted); font-size: 13px; padding: 40px 0; text-align: center; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--axis); margin: 0 0 16px; overflow-x: auto; }
+.tabs button {
+  font: inherit; font-size: 14px; color: var(--ink-2); background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 8px 12px; margin-bottom: -1px; cursor: pointer; white-space: nowrap;
+}
+.tabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--s1); }
+.tabpanel[hidden] { display: none; }
+tr.grupo td { font-weight: 600; background: var(--page); }
+tr.det td:first-child { padding-left: 24px; color: var(--ink-2); }
+tr.det-otros td:first-child { font-style: italic; }
+.barra-sw { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 0 0 12px; }
+.barra-sw .switch { margin: 0; }
+.barra-sw span { color: var(--muted); font-size: 12px; }
+td .barra { display: inline-block; height: 8px; border-radius: 2px; background: var(--s1); opacity: .5; vertical-align: middle; margin-right: 6px; }
 .switch { display: inline-flex; gap: 2px; padding: 2px; margin: 0 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--page); }
 .switch button {
   font: inherit; font-size: 12px; color: var(--ink-2); background: none; border: 0; border-radius: 6px;
@@ -94,22 +119,28 @@ td.heat { color: var(--ink); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>Panel de Leads</h1>
-      <div class="sub">Negocios creados en HubSpot · leads, matriculados y cursos</div>
+<header class="top">
+  <div class="top-in">
+    <img src="logo.png" alt="EOMTP · Escuela Oficial Maestros Tatuadores y Piercers" width="576" height="194">
+    <div class="titulo">
+      <h1>Dashboard EOMTP España</h1>
     </div>
     <div class="meta" id="meta"></div>
-  </header>
+  </div>
+</header>
+<div class="wrap">
 
   <div class="filters">
     <label for="desde">Desde</label><select id="desde"></select>
     <label for="hasta">Hasta</label><select id="hasta"></select>
   </div>
 
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-resumen" aria-controls="panel-resumen" aria-selected="true" data-tab="resumen">Resumen</button>
+    <button role="tab" id="tab-canal" aria-controls="panel-canal" aria-selected="false" data-tab="canal">Rendimiento por canal</button>
+  </nav>
 
-  <section class="grid">
+  <section class="grid tabpanel" id="panel-resumen" role="tabpanel" aria-labelledby="tab-resumen">
     <div class="card span2">
       <h2>Leads totales vs Matriculados</h2>
       <div class="switch" id="sw-lvm" role="group" aria-label="Cómo contar los matriculados">
@@ -147,6 +178,35 @@ td.heat { color: var(--ink); }
       <div class="tablewrap" id="t-stage"></div>
     </div>
   </section>
+
+  <section class="grid tabpanel" id="panel-canal" role="tabpanel" aria-labelledby="tab-canal" hidden>
+    <div class="span2 barra-sw">
+      <div class="switch" id="sw-canal" role="group" aria-label="Cómo contar los matriculados">
+        <button data-modo="mes" aria-pressed="true">Matrículas cerradas en el mes</button>
+        <button data-modo="cohorte" aria-pressed="false">Matriculados de los leads del mes</button>
+      </div>
+      <span id="periodo-canal"></span>
+    </div>
+    <div class="card span2">
+      <h2>Por canal</h2>
+      <p class="desc">Canal = fuente de tráfico original del negocio en HubSpot («Original Traffic Source»)</p>
+      <div class="tablewrap" id="t-canal"></div>
+    </div>
+    <div class="card span2">
+      <h2>Por origen del registro del contacto</h2>
+      <p class="desc">Por dónde entró el contacto a HubSpot: formulario, integración de WhatsApp, etc. («Record source detail 1» del contacto). Un negocio con varios contactos puede contar más de una vez.</p>
+      <div class="tablewrap" id="t-origen"></div>
+    </div>
+    <div class="card span2">
+      <h2>Por detalle de la fuente original</h2>
+      <div class="switch" id="sw-detalle" role="group" aria-label="Nivel de detalle">
+        <button data-modo="detalle1" aria-pressed="true">Drill-Down 1</button>
+        <button data-modo="detalle2" aria-pressed="false">Drill-Down 2</button>
+      </div>
+      <p class="desc" id="desc-detalle"></p>
+      <div class="tablewrap" id="t-detalle"></div>
+    </div>
+  </section>
 </div>
 <div id="tip"></div>
 
@@ -162,8 +222,21 @@ td.heat { color: var(--ink); }
   const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
   const NS = "http://www.w3.org/2000/svg";
   const tip = document.getElementById("tip");
+  // pestañas: la activa queda en la URL (#resumen / #canal) para poder compartir el enlace
+  const TABS = ["resumen", "canal"];
+  let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "resumen";
+  function mostrarTab(t, desdeClick) {
+    tab = t;
+    document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
+    TABS.forEach(n => (document.getElementById("panel-" + n).hidden = n !== t));
+    if (desdeClick) history.replaceState(null, "", "#" + t);
+    render();
+  }
+  document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => mostrarTab(b.dataset.tab, true)));
+  addEventListener("hashchange", () => TABS.includes(location.hash.slice(1)) && mostrarTab(location.hash.slice(1)));
+
   // switches de cómo contar los matriculados (cada gráfico tiene el suyo)
-  let modoLvm = "mes", modoPct = "mes", modoCurso = "mes";
+  let modoLvm = "mes", modoPct = "mes", modoCurso = "mes", modoCanal = "mes", modoDetalle = "detalle1";
   function conectarSwitch(id, alCambiar) {
     document.querySelectorAll(`#${id} button`).forEach(b => b.addEventListener("click", () => {
       document.querySelectorAll(`#${id} button`).forEach(o => o.setAttribute("aria-pressed", o === b));
@@ -174,6 +247,8 @@ td.heat { color: var(--ink); }
   conectarSwitch("sw-lvm", m => (modoLvm = m));
   conectarSwitch("sw-pct", m => (modoPct = m));
   conectarSwitch("sw-curso", m => (modoCurso = m));
+  conectarSwitch("sw-canal", m => (modoCanal = m));
+  conectarSwitch("sw-detalle", m => (modoDetalle = m));
 
   // selector de curso (uno por vez)
   const EXCLUIDOS = ["Higiénico Sanitario - General"];
@@ -469,6 +544,7 @@ td.heat { color: var(--ink); }
   }
 
   function render() {
+    if (tab === "canal") return renderCanal();
     const a = +selDesde.value, b = +selHasta.value + 1;
     const meses = D.meses.slice(a, b);
     const cut = arr => arr.slice(a, b);
@@ -550,7 +626,70 @@ td.heat { color: var(--ink); }
       entradas.map(e => [e.nombre].concat(e.valores, [sum(e.valores)])), null, true);
   }
 
-  render();
+  // ---- pestaña Rendimiento por canal ----
+  const NOMBRE_CANAL = Object.fromEntries(D.canales.map(c => [c.id, c.nombre]));
+  const DESC_DETALLE = {
+    detalle1: "Drill-Down 1: campaña de Google Ads en búsqueda pagada, página de entrada en tráfico directo, sitio en referencias, " +
+      "tipo de alta (integración, importación, manual) en fuentes sin conexión.",
+    detalle2: "Drill-Down 2: campaña de Meta en redes sociales pagadas, buscador en búsqueda orgánica, palabra clave en búsqueda pagada, " +
+      "ID de la integración o del usuario en fuentes sin conexión.",
+  };
+  const MAX_DETALLE = 8; // filas de detalle por canal; el resto se agrupa en «Otros»
+
+  function renderCanal() {
+    const a = +selDesde.value, b = +selHasta.value + 1;
+    const sum = arr => (arr || []).slice(a, b).reduce((s, v) => s + v, 0);
+    const clave = modoCanal === "mes" ? "matriculas_mes" : "matriculados";
+    const nomW = modoCanal === "mes" ? "Matrículas cerradas" : "Matriculados";
+    const tasa = (w, l) => (l ? pct((w * 100) / l) : "–");
+    const medir = r => ({ leads: sum(r.valores), won: sum(r[clave]) });
+    document.getElementById("periodo-canal").textContent = `${mesLargo(D.meses[a])} – ${mesLargo(D.meses[b - 1])}`;
+
+    // filas: {nombre, leads, won, tipo: "grupo"|"sub"|"otros"|undefined}
+    function tabla(id, filas, etiqueta) {
+      const base = filas.filter(f => !(f.tipo || "").includes("det")); // el total no suma las filas de detalle
+      const tL = base.reduce((s, f) => s + f.leads, 0), tW = base.reduce((s, f) => s + f.won, 0);
+      const maxL = Math.max(1, ...filas.map(f => f.leads));
+      document.getElementById(id).innerHTML =
+        `<table><thead><tr><th>${etiqueta}</th><th>Leads</th><th>% de los leads</th><th>${nomW}</th><th>% de ${nomW.toLowerCase()}</th><th>% matriculación</th></tr></thead><tbody>` +
+        filas.map(f => `<tr class="${f.tipo || ""}"><td>${f.nombre}</td>` +
+          `<td><span class="barra" style="width:${Math.round((f.leads / maxL) * 80)}px"></span>${fmt(f.leads)}</td>` +
+          `<td>${tasa(f.leads, tL)}</td><td>${fmt(f.won)}</td><td>${tasa(f.won, tW)}</td><td><b>${tasa(f.won, f.leads)}</b></td></tr>`).join("") +
+        `<tr class="total"><td>Total</td><td>${fmt(tL)}</td><td>100,0 %</td><td>${fmt(tW)}</td><td>100,0 %</td><td>${tasa(tW, tL)}</td></tr></tbody></table>`;
+    }
+    const ordenar = (x, y) => (x.ultimo || 0) - (y.ultimo || 0) || y.leads - x.leads || y.won - x.won;
+
+    // 1) por canal
+    tabla("t-canal", D.canales.map(c => ({ nombre: c.nombre, ultimo: c.id === "", ...medir(c) }))
+      .filter(f => f.leads || f.won).sort(ordenar), "Canal");
+
+    // 2) por origen del registro del contacto
+    tabla("t-origen", D.origen_contacto.map(o => ({ nombre: o.nombre, ultimo: o.id === "Unassigned", ...medir(o) }))
+      .filter(f => f.leads || f.won).sort(ordenar), "Origen del registro");
+
+    // 3) por detalle, agrupado por canal
+    document.getElementById("desc-detalle").textContent = DESC_DETALLE[modoDetalle];
+    const porCanal = {};
+    D[modoDetalle].forEach(r => {
+      const f = { nombre: r.nombre || "(vacío)", ...medir(r) };
+      if (f.leads || f.won) (porCanal[r.canal] = porCanal[r.canal] || []).push(f);
+    });
+    const grupos = Object.entries(porCanal).map(([canal, det]) => ({
+      canal, det: det.sort(ordenar),
+      leads: det.reduce((s, f) => s + f.leads, 0), won: det.reduce((s, f) => s + f.won, 0), ultimo: canal === "",
+    })).sort(ordenar);
+    const filas = [];
+    grupos.forEach(g => {
+      filas.push({ nombre: NOMBRE_CANAL[g.canal] || g.canal || "Sin canal", leads: g.leads, won: g.won, tipo: "grupo" });
+      g.det.slice(0, MAX_DETALLE).forEach(f => filas.push({ ...f, tipo: "det" }));
+      const resto = g.det.slice(MAX_DETALLE);
+      if (resto.length) filas.push({ nombre: `Otros (${resto.length})`, tipo: "det det-otros",
+        leads: resto.reduce((s, f) => s + f.leads, 0), won: resto.reduce((s, f) => s + f.won, 0) });
+    });
+    tabla("t-detalle", filas, "Canal / detalle");
+  }
+
+  mostrarTab(tab);
   let t;
   addEventListener("resize", () => { clearTimeout(t); t = setTimeout(render, 120); });
 })();

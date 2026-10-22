@@ -35,7 +35,7 @@ jobs:
         run: |
           if [ -n "$HUBSPOT_TOKEN" ]; then python3 actualizar.py; else echo "Sin HUBSPOT_TOKEN: se publica el data.js del repositorio"; fi
       - name: Preparar sitio
-        run: mkdir _site && cp index.html data.js _site/
+        run: mkdir _site && cp index.html data.js logo.png _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
