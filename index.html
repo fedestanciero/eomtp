@@ -49,9 +49,6 @@ select {
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; min-width: 0; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .span2 { grid-column: 1 / -1; }
-.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.trio h3 { font-size: 13px; font-weight: 600; margin: 0 0 4px; color: var(--ink-2); }
-@media (max-width: 900px) { .trio { grid-template-columns: minmax(0, 1fr); } }
 .selector { font-size: 13px; color: var(--ink-2); margin: 0 0 10px; display: flex; gap: 8px; align-items: center; }
 @media (max-width: 820px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 .card h2 { font-size: 15px; font-weight: 600; margin: 0; }
@@ -218,13 +215,16 @@ td.heat { color: var(--ink); }
     <div class="card span2">
       <h2>Leads, inversión y CPL por mes</h2>
       <p class="desc" id="desc-inv"></p>
-      <label class="selector">Ciudad <select id="sel-ciudad"></select></label>
-      <div class="legend" id="l-inv"></div>
-      <div class="trio">
-        <div><h3>Leads de Meta y Google Ads</h3><div class="chart" id="c-inv-leads"></div></div>
-        <div><h3>Inversión</h3><div class="chart" id="c-inv-gasto"></div></div>
-        <div><h3>CPL (costo por lead)</h3><div class="chart" id="c-inv-cpl"></div></div>
+      <div class="barra-sw">
+        <div class="switch" id="sw-plataforma" role="group" aria-label="Plataforma">
+          <button data-modo="total" aria-pressed="true">Total</button>
+          <button data-modo="google" aria-pressed="false">Google Ads</button>
+          <button data-modo="meta" aria-pressed="false">Meta Ads</button>
+        </div>
+        <label class="selector" style="margin:0">Ciudad <select id="sel-ciudad"></select></label>
       </div>
+      <div class="legend" id="l-inv"></div>
+      <div class="chart" id="c-inv"></div>
       <details><summary>Ver tabla</summary><div class="tablewrap" id="t-inv"></div></details>
     </div>
   </section>
@@ -271,6 +271,8 @@ td.heat { color: var(--ink); }
   conectarSwitch("sw-curso", m => (modoCurso = m));
   conectarSwitch("sw-canal", m => (modoCanal = m));
   conectarSwitch("sw-detalle", m => (modoDetalle = m));
+  let modoPlataforma = "total";
+  conectarSwitch("sw-plataforma", m => (modoPlataforma = m));
 
   // selector de curso (uno por vez)
   const EXCLUIDOS = ["Higiénico Sanitario - General"];
@@ -397,6 +399,65 @@ td.heat { color: var(--ink); }
         g.style.opacity = 1; svg.querySelectorAll("g").forEach(o => { if (o !== g) o.style.opacity = .55; });
       });
       hit.addEventListener("mouseleave", () => { hideTip(); svg.querySelectorAll("g").forEach(o => (o.style.opacity = 1)); });
+    });
+  }
+
+  // ---- gráfico evolutivo de inversión: inversión (eje izq.) y leads (eje der.) en barras,
+  //      CPL en línea en la franja superior con el valor en cada punto ----
+  function evoChart(container, labels, inv, leads, cpl, opts) {
+    container.innerHTML = "";
+    const W = Math.max(container.clientWidth, 280), H = opts.height || 320;
+    const m = { t: 30, r: 48, b: 26, l: 56 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const franja = ih * 0.28, barrasH = ih - franja - 18; // la línea vive arriba; las barras debajo
+    const maxI = niceMax(Math.max(1, ...inv)), maxL = niceMax(Math.max(1, ...leads));
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": opts.title }, container);
+    const base = m.t + ih;
+    const yI = v => base - (v / maxI) * barrasH, yL = v => base - (v / maxL) * barrasH;
+    for (let k = 0; k <= 4; k++) {
+      const yy = base - (barrasH / 4) * k;
+      el("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy, stroke: k ? css("--grid") : css("--axis") }, svg);
+      el("text", { x: m.l - 6, y: yy + 4, "text-anchor": "end" }, svg).textContent = opts.eur((maxI / 4) * k);
+      el("text", { x: W - m.r + 6, y: yy + 4, "text-anchor": "start" }, svg).textContent = fmt((maxL / 4) * k);
+    }
+    el("text", { x: 4, y: base - barrasH - 10, "text-anchor": "start", class: "lbl" }, svg).textContent = "Inversión";
+    el("text", { x: W - 4, y: base - barrasH - 10, "text-anchor": "end", class: "lbl" }, svg).textContent = "Leads";
+    const band = iw / labels.length, gw = Math.min(70, band * 0.6), bw = (gw - 2) / 2;
+    const cx = i => m.l + band * i + band / 2, salto = Math.ceil(44 / band), etiquetas = band > 56;
+    const barra = (x0, y1, color) => {
+      const r = Math.min(4, base - y1, bw / 2);
+      el("path", { d: `M${x0},${base} V${y1 + r} Q${x0},${y1} ${x0 + r},${y1} H${x0 + bw - r} Q${x0 + bw},${y1} ${x0 + bw},${y1 + r} V${base} Z`, fill: color }, svg);
+    };
+    labels.forEach((lab, i) => {
+      const x0 = cx(i) - gw / 2;
+      if (inv[i] > 0) barra(x0, yI(inv[i]), opts.colInv);
+      if (leads[i] > 0) barra(x0 + bw + 2, yL(leads[i]), opts.colLeads);
+      if (etiquetas) {
+        el("text", { x: x0 + bw / 2, y: yI(inv[i]) - 4, "text-anchor": "middle", class: "lbl" }, svg).textContent = opts.eur(inv[i]);
+        el("text", { x: x0 + bw * 1.5 + 2, y: yL(leads[i]) - 4, "text-anchor": "middle", class: "lbl" }, svg).textContent = fmt(leads[i]);
+      }
+      if (i % salto === 0) el("text", { x: cx(i), y: H - 8, "text-anchor": "middle" }, svg).textContent = mesCorto(lab);
+    });
+    // CPL: escala propia dentro de la franja superior (sin eje; el valor va en cada punto)
+    // escala desde €0 para no exagerar las variaciones
+    const hi = niceMax(Math.max(1, ...cpl.filter(isFinite)));
+    const yC = v => m.t + 16 + (1 - v / hi) * (franja + 8);
+    let d = "";
+    cpl.forEach((v, i) => { if (isFinite(v)) d += (d ? "L" : "M") + cx(i) + "," + yC(v) + " "; });
+    el("path", { d, fill: "none", stroke: opts.colCpl, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+    cpl.forEach((v, i) => {
+      if (!isFinite(v)) return;
+      el("circle", { cx: cx(i), cy: yC(v), r: 4, fill: opts.colCpl, stroke: css("--surface"), "stroke-width": 2 }, svg);
+      el("text", { x: cx(i), y: yC(v) - 9, "text-anchor": "middle", class: "lbl fondo" }, svg).textContent = opts.eur1(v);
+    });
+    const cross = el("line", { y1: m.t, y2: base, stroke: css("--axis"), opacity: 0 }, svg);
+    labels.forEach((lab, i) => {
+      const hit = el("rect", { x: m.l + band * i, y: m.t, width: band, height: ih, fill: "transparent" }, svg);
+      hit.addEventListener("mousemove", e => {
+        cross.setAttribute("x1", cx(i)); cross.setAttribute("x2", cx(i)); cross.setAttribute("opacity", 1);
+        showTip(e, mesLargo(lab), opts.rows(i));
+      });
+      hit.addEventListener("mouseleave", () => { hideTip(); cross.setAttribute("opacity", 0); });
     });
   }
 
@@ -739,27 +800,26 @@ td.heat { color: var(--ink); }
     const nombre = selCiudad.value || "Todas las ciudades";
     const ultimo = meses[meses.length - 1] === "2026-10" ? ` · octubre hasta el ${+INV.hasta.slice(8)}` : "";
     const sum = arr => arr.reduce((s, v) => s + v, 0);
+    const resumenPlat = () => {
+      const [l, g, n] = { total: [lPlat, gasto, "Meta y Google Ads"], google: [lGoogle, gGoogle, "Google Ads"], meta: [lMeta, gMeta, "Meta Ads"] }[modoPlataforma];
+      return `${n}: ${fmt(sum(l))} leads, ${eur(sum(g))} invertidos, CPL ${eur1(sum(g) / sum(l))}`;
+    };
     document.getElementById("desc-inv").textContent = meses.length
-      ? `${nombre} · ${fmt(sum(lPlat))} leads de Meta y Google Ads, ${eur(sum(gasto))} invertidos, CPL ${eur1(sum(gasto) / sum(lPlat))}${ultimo} · datos cargados desde la planilla (julio a octubre 2026)`
+      ? `${nombre} · ${resumenPlat()}${ultimo} · datos cargados desde la planilla (julio a octubre 2026)`
       : "No hay datos de inversión en el período elegido (están cargados de julio a octubre 2026).";
-    const colMeta = css("--s1"), colGoogle = css("--s2");
+    const colInv = css("--s1"), colLeads = css("--s2"), colCpl = css("--s7");
+    const PLAT = { total: ["Total", lPlat, gasto, cplPlat], google: ["Google Ads", lGoogle, gGoogle, cplGoogle], meta: ["Meta Ads", lMeta, gMeta, cplMeta] };
+    const [nomP, leadsP, invP, cplP] = PLAT[modoPlataforma];
     document.getElementById("l-inv").innerHTML =
-      `<span><i style="background:${colMeta}"></i>Meta</span><span><i style="background:${colGoogle}"></i>Google Ads</span>` +
-      `<span><i style="background:${css("--s7")};height:3px;border-radius:2px"></i>CPL total (inversión ÷ leads de Meta + Google)</span>`;
-    const ids = ["c-inv-leads", "c-inv-gasto", "c-inv-cpl"];
-    if (!meses.length) { ids.forEach(id => (document.getElementById(id).innerHTML = "")); document.getElementById("t-inv").innerHTML = ""; return; }
-    barChart(document.getElementById(ids[0]), meses, [
-      { name: "Meta", values: lMeta, color: colMeta }, { name: "Google Ads", values: lGoogle, color: colGoogle }], { title: "Leads de plataformas", height: 240 });
-    barChart(document.getElementById(ids[1]), meses, [
-      { name: "Meta", values: gMeta, color: colMeta }, { name: "Google Ads", values: gGoogle, color: colGoogle }], { title: "Inversión", height: 240, format: eur });
-    lineChart(document.getElementById(ids[2]), meses, [{ name: "CPL total", values: cplPlat, color: css("--s7") }], {
-      title: "CPL", height: 240, format: eur1, axisFormat: eur, allLabels: true,
+      `<span><i style="background:${colInv}"></i>Inversión (eje izquierdo)</span><span><i style="background:${colLeads}"></i>Leads (eje derecho)</span>` +
+      `<span><i style="background:${colCpl};height:3px;border-radius:2px"></i>CPL (inversión ÷ leads, valor en cada punto)</span>`;
+    if (!meses.length) { document.getElementById("c-inv").innerHTML = ""; document.getElementById("t-inv").innerHTML = ""; return; }
+    evoChart(document.getElementById("c-inv"), meses, invP, leadsP, cplP, {
+      title: `Leads, inversión y CPL · ${nomP}`, height: 340, colInv, colLeads, colCpl, eur, eur1,
       rows: i => [
-        { name: "CPL total", value: eur1(cplPlat[i]), color: css("--s7") },
-        { name: "CPL Meta", value: eur1(cplMeta[i]), color: colMeta },
-        { name: "CPL Google Ads", value: eur1(cplGoogle[i]), color: colGoogle },
-        { name: "Inversión", value: eur(gasto[i]) },
-        { name: "Leads", value: fmt(lPlat[i]) },
+        { name: "Inversión", value: eur(invP[i]), color: colInv },
+        { name: "Leads", value: fmt(leadsP[i]), color: colLeads },
+        { name: "CPL", value: eur1(cplP[i]), color: colCpl },
       ],
     });
     const fila = (n, arr, f, total) => [n].concat(arr.map(f), [total]);
