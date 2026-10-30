@@ -141,6 +141,7 @@ td.heat { color: var(--ink); }
     <button role="tab" id="tab-resumen" aria-controls="panel-resumen" aria-selected="true" data-tab="resumen">Resumen</button>
     <button role="tab" id="tab-canal" aria-controls="panel-canal" aria-selected="false" data-tab="canal">Rendimiento por canal</button>
     <button role="tab" id="tab-inversion" aria-controls="panel-inversion" aria-selected="false" data-tab="inversion">Inversión publicitaria</button>
+    <button role="tab" id="tab-presupuesto" aria-controls="panel-presupuesto" aria-selected="false" data-tab="presupuesto">Presupuesto</button>
   </nav>
 
   <section class="grid tabpanel" id="panel-resumen" role="tabpanel" aria-labelledby="tab-resumen">
@@ -228,11 +229,33 @@ td.heat { color: var(--ink); }
       <details><summary>Ver tabla</summary><div class="tablewrap" id="t-inv"></div></details>
     </div>
   </section>
+
+  <section class="grid tabpanel" id="panel-presupuesto" role="tabpanel" aria-labelledby="tab-presupuesto" hidden>
+    <div class="span2 barra-sw">
+      <div class="switch" id="sw-presu" role="group" aria-label="Presupuesto mensual o diario">
+        <button data-modo="mensual" aria-pressed="true">Presupuesto mensual</button>
+        <button data-modo="diario" aria-pressed="false">Presupuesto diario</button>
+      </div>
+      <span id="periodo-presu"></span>
+    </div>
+    <div class="card span2">
+      <h2>Presupuesto de Meta Ads por ciudad</h2>
+      <p class="desc" id="desc-presu"></p>
+      <div class="legend" id="l-presu"></div>
+      <div class="chart" id="c-presu"></div>
+    </div>
+    <div class="card span2">
+      <h2>Por campaña</h2>
+      <p class="desc" id="desc-presu-t"></p>
+      <div class="tablewrap" id="t-presu"></div>
+    </div>
+  </section>
 </div>
 <div id="tip"></div>
 
 <script src="data.js"></script>
 <script src="inversion.js"></script>
+<script src="presupuesto.js"></script>
 <script>
 (function () {
   const D = window.PANEL_DATA;
@@ -245,7 +268,7 @@ td.heat { color: var(--ink); }
   const NS = "http://www.w3.org/2000/svg";
   const tip = document.getElementById("tip");
   // pestañas: la activa queda en la URL (#resumen / #canal) para poder compartir el enlace
-  const TABS = ["resumen", "canal", "inversion"];
+  const TABS = ["resumen", "canal", "inversion", "presupuesto"];
   let tab = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "resumen";
   function mostrarTab(t, desdeClick) {
     tab = t;
@@ -273,6 +296,8 @@ td.heat { color: var(--ink); }
   conectarSwitch("sw-detalle", m => (modoDetalle = m));
   let modoPlataforma = "total";
   conectarSwitch("sw-plataforma", m => (modoPlataforma = m));
+  let modoPresu = "mensual";
+  conectarSwitch("sw-presu", m => (modoPresu = m));
 
   // selector de curso (uno por vez)
   const EXCLUIDOS = ["Higiénico Sanitario - General"];
@@ -631,6 +656,7 @@ td.heat { color: var(--ink); }
   function render() {
     if (tab === "canal") return renderCanal();
     if (tab === "inversion") return renderInversion();
+    if (tab === "presupuesto") return renderPresupuesto();
     const a = +selDesde.value, b = +selHasta.value + 1;
     const meses = D.meses.slice(a, b);
     const cut = arr => arr.slice(a, b);
@@ -834,6 +860,66 @@ td.heat { color: var(--ink); }
       fila("CPL Google Ads", cplGoogle, eur1, eur1(sum(gGoogle) / sum(lGoogle))),
       fila("CPL total", cplPlat, eur1, eur1(sum(gasto) / sum(lPlat))),
     ]);
+  }
+
+  // ---- pestaña Presupuesto (media plan de Meta Ads) ----
+  const PRESU = window.PRESUPUESTO;
+  const PLAZAS = ["Madrid", "Barcelona", "Valencia", "Bilbao", "Vigo", "Mallorca", "Zaragoza", "España"];
+  const nombrePlaza = p => (p === "España" ? "España (campañas nacionales)" : p);
+  const diasMes = m => new Date(+m.slice(0, 4), +m.slice(5), 0).getDate();
+
+  function renderPresupuesto() {
+    const a = +selDesde.value, b = +selHasta.value;
+    const meses = PRESU.meses.filter(m => { const i = D.meses.indexOf(m); return i >= a && i <= b; });
+    const mensual = modoPresu === "mensual";
+    // valor de una campaña en un mes: diario, o diario × días del mes
+    const valor = (c, m) => { const d = c.diario[PRESU.meses.indexOf(m)]; return mensual ? d * diasMes(m) : d; };
+    const sum = arr => arr.reduce((s, v) => s + v, 0);
+    const f = mensual ? eur : eur1;
+    document.getElementById("periodo-presu").textContent = meses.length ? `${mesLargo(meses[0])} – ${mesLargo(meses[meses.length - 1])}` : "";
+    const nota = mensual ? "El mensual se estima como presupuesto diario × días del mes." : "Presupuesto diario de cada campaña.";
+    if (!meses.length) {
+      document.getElementById("desc-presu").textContent = "No hay presupuesto cargado en el período elegido (está de enero a octubre 2026).";
+      ["l-presu", "c-presu", "t-presu", "desc-presu-t"].forEach(id => (document.getElementById(id).innerHTML = ""));
+      return;
+    }
+
+    // gráfico: barras apiladas por ciudad
+    const colores = ["--s1", "--s2", "--s3", "--s4", "--s5", "--s6", "--s7", "--s8"].map(css);
+    const series = PLAZAS.map((p, k) => ({
+      name: nombrePlaza(p), color: colores[k],
+      values: meses.map(m => sum(PRESU.campanas.filter(c => c.plaza === p).map(c => valor(c, m)))),
+    })).filter(se => sum(se.values) > 0);
+    const totales = meses.map((_, i) => sum(series.map(se => se.values[i])));
+    document.getElementById("desc-presu").textContent = (mensual
+      ? `Total del período: ${eur(sum(totales))}. `
+      : `Entre ${eur1(Math.min(...totales))} y ${eur1(Math.max(...totales))} por día en el período. `) +
+      `${nota} Fuente: ${PRESU.fuente}, columnas de enero 2026 en adelante.`;
+    document.getElementById("l-presu").innerHTML = series.map(se => `<span><i style="background:${se.color}"></i>${se.name}</span>`).join("");
+    barChart(document.getElementById("c-presu"), meses, series, { title: "Presupuesto de Meta Ads por ciudad", height: 300, format: f });
+
+    // tabla: ciudad y sus campañas; se ocultan las campañas sin presupuesto en el período
+    const ultima = mensual ? "Total" : "Promedio";
+    const cierre = vals => (mensual ? sum(vals) : sum(vals) / vals.length);
+    const filas = [];
+    let ocultas = 0;
+    PLAZAS.forEach(p => {
+      const camp = PRESU.campanas.filter(c => c.plaza === p).map(c => ({ ...c, vals: meses.map(m => valor(c, m)) }));
+      const activas = camp.filter(c => sum(c.vals) > 0);
+      ocultas += camp.length - activas.length;
+      if (!activas.length) return;
+      const tot = meses.map((_, i) => sum(activas.map(c => c.vals[i])));
+      filas.push({ tipo: "grupo", nombre: nombrePlaza(p), vals: tot });
+      activas.forEach(c => filas.push({ tipo: "det", nombre: `${c.campana} <small style="color:var(--muted)">· ${c.etapa}</small>`, vals: c.vals }));
+    });
+    const celda = v => `<td>${v ? f(v) : "–"}</td>`;
+    document.getElementById("t-presu").innerHTML =
+      `<table><thead><tr><th>Ciudad / campaña</th>${meses.map(m => `<th>${mesCorto(m)}</th>`).join("")}<th>${ultima}</th></tr></thead><tbody>` +
+      filas.map(r => `<tr class="${r.tipo}"><td>${r.nombre}</td>${r.vals.map(celda).join("")}${celda(cierre(r.vals))}</tr>`).join("") +
+      `<tr class="total"><td>Total</td>${totales.map(celda).join("")}${celda(cierre(totales))}</tr></tbody></table>`;
+    document.getElementById("desc-presu-t").textContent = (mensual ? "Presupuesto mensual estimado" : "Presupuesto diario") +
+      " por campaña. «IDEM» en la planilla toma el valor del mes anterior; abril tuvo un ajuste dentro del mes y se usa el último valor." +
+      (ocultas ? ` No se muestran ${ocultas} campañas sin presupuesto en el período.` : "");
   }
 
   mostrarTab(tab);
