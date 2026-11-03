@@ -1,8 +1,33 @@
-// Presupuesto diario de Meta Ads por campaña (España), desde la planilla «Media plan EOMTP».
+// Presupuesto diario de Meta Ads, desde la planilla «Media plan EOMTP». Lo genera actualizacion/presupuesto.py.
 // «IDEM» = el valor del mes anterior; celda vacía = campaña sin presupuesto. Abril tuvo dos columnas: vale la última.
 window.PRESUPUESTO = {
   "fuente": "Planilla «Media plan EOMTP», pestaña «Media plan»",
   "meses": ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"],
+  "columna_actual": "Octubre",
+  "actual": [
+    {"pais": "España", "ciudad": "Madrid", "diario": 10.0},
+    {"pais": "España", "ciudad": "Barcelona", "diario": 25.0},
+    {"pais": "España", "ciudad": "Vigo", "diario": 3.0},
+    {"pais": "España", "ciudad": "Bilbao", "diario": 9.0},
+    {"pais": "España", "ciudad": "Valencia", "diario": 22.0},
+    {"pais": "España", "ciudad": "Zaragoza", "diario": 0.0},
+    {"pais": "España", "ciudad": "Mallorca", "diario": 0.0},
+    {"pais": "España", "ciudad": "España", "diario": 10.0},
+    {"pais": "Portugal", "ciudad": "Lisboa", "diario": 7.5},
+    {"pais": "Portugal", "ciudad": "Porto", "diario": 7.5},
+    {"pais": "Portugal", "ciudad": "Lisboa + Porto", "diario": 4.0},
+    {"pais": "Francia", "ciudad": "Bordeaux", "diario": 3.0},
+    {"pais": "Francia", "ciudad": "Strasbourg", "diario": 5.0},
+    {"pais": "Francia", "ciudad": "Nantes", "diario": 5.0},
+    {"pais": "Francia", "ciudad": "Lille", "diario": 9.0},
+    {"pais": "Francia", "ciudad": "Bélgica, Suiza, Francia, Luxemburgo", "diario": 0.0},
+    {"pais": "Francia", "ciudad": "Marsella", "diario": 8.0},
+    {"pais": "Francia", "ciudad": "Montpellier", "diario": 10.0},
+    {"pais": "Francia", "ciudad": "Toulouse", "diario": 8.0},
+    {"pais": "Francia", "ciudad": "Paris", "diario": 30.0},
+    {"pais": "Francia", "ciudad": "Nice", "diario": 5.0},
+    {"pais": "Francia", "ciudad": "Lyon", "diario": 9.0}
+  ],
   "campanas": [
     {"plaza": "Madrid", "etapa": "Awareness", "campana": "españa_conversiones_madrid_awareness", "diario": [35.0, 35.0, 35.0, 35.0, 35.0, 35.0, 35.0, 35.0, 5.0, 5.0]},
     {"plaza": "Madrid", "etapa": "Awareness", "campana": "españa_form-lead_madrid_awareness", "diario": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 5.0]},

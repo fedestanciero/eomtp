@@ -70,12 +70,15 @@ select {
 .dd label { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; color: var(--ink); cursor: pointer; }
 .dd label small { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
 .vacio { color: var(--muted); font-size: 13px; padding: 40px 0; text-align: center; }
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--axis); margin: 0 0 16px; overflow-x: auto; }
-.tabs button {
+.tabs, .subtabs { display: flex; gap: 4px; border-bottom: 1px solid var(--axis); margin: 0 0 16px; overflow-x: auto; }
+.subtabs { margin: 0; }
+.tabs button, .subtabs button {
   font: inherit; font-size: 14px; color: var(--ink-2); background: none; border: 0; border-bottom: 2px solid transparent;
   padding: 8px 12px; margin-bottom: -1px; cursor: pointer; white-space: nowrap;
 }
-.tabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--s1); }
+.tabs button[aria-selected="true"], .subtabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--s1); }
+.subtabs button { font-size: 13px; }
+#t-mediaplan th:nth-child(2), #t-mediaplan td:nth-child(2) { text-align: left; white-space: normal; }
 .tabpanel[hidden] { display: none; }
 tr.grupo td { font-weight: 600; background: var(--page); }
 tr.det td:first-child { padding-left: 24px; color: var(--ink-2); }
@@ -231,23 +234,32 @@ td.heat { color: var(--ink); }
   </section>
 
   <section class="grid tabpanel" id="panel-presupuesto" role="tabpanel" aria-labelledby="tab-presupuesto" hidden>
-    <div class="span2 barra-sw">
-      <div class="switch" id="sw-presu" role="group" aria-label="Presupuesto mensual o diario">
-        <button data-modo="mensual" aria-pressed="true">Presupuesto mensual</button>
-        <button data-modo="diario" aria-pressed="false">Presupuesto diario</button>
+    <nav class="subtabs span2" role="tablist" aria-label="Vistas de presupuesto">
+      <button role="tab" aria-selected="true" aria-controls="sub-inversion" data-sub="inversion">Inversión por mes</button>
+      <button role="tab" aria-selected="false" aria-controls="sub-mediaplan" data-sub="mediaplan">Media plan</button>
+    </nav>
+    <div class="grid span2 tabpanel" id="sub-inversion" role="tabpanel">
+      <div class="span2 barra-sw">
+        <span id="periodo-presu"></span>
       </div>
-      <span id="periodo-presu"></span>
+      <div class="card span2">
+        <h2>Presupuesto de Meta Ads por ciudad</h2>
+        <p class="desc" id="desc-presu"></p>
+        <div class="legend" id="l-presu"></div>
+        <div class="chart" id="c-presu"></div>
+      </div>
+      <div class="card span2">
+        <h2>Por campaña</h2>
+        <p class="desc" id="desc-presu-t"></p>
+        <div class="tablewrap" id="t-presu"></div>
+      </div>
     </div>
-    <div class="card span2">
-      <h2>Presupuesto de Meta Ads por ciudad</h2>
-      <p class="desc" id="desc-presu"></p>
-      <div class="legend" id="l-presu"></div>
-      <div class="chart" id="c-presu"></div>
-    </div>
-    <div class="card span2">
-      <h2>Por campaña</h2>
-      <p class="desc" id="desc-presu-t"></p>
-      <div class="tablewrap" id="t-presu"></div>
+    <div class="grid span2 tabpanel" id="sub-mediaplan" role="tabpanel" hidden>
+      <div class="card span2">
+        <h2>Presupuesto actual por ciudad</h2>
+        <p class="desc" id="desc-mediaplan"></p>
+        <div class="tablewrap" id="t-mediaplan"></div>
+      </div>
     </div>
   </section>
 </div>
@@ -296,8 +308,6 @@ td.heat { color: var(--ink); }
   conectarSwitch("sw-detalle", m => (modoDetalle = m));
   let modoPlataforma = "total";
   conectarSwitch("sw-plataforma", m => (modoPlataforma = m));
-  let modoPresu = "mensual";
-  conectarSwitch("sw-presu", m => (modoPresu = m));
 
   // selector de curso (uno por vez)
   const EXCLUIDOS = ["Higiénico Sanitario - General"];
@@ -867,17 +877,40 @@ td.heat { color: var(--ink); }
   const PLAZAS = ["Madrid", "Barcelona", "Valencia", "Bilbao", "Vigo", "Mallorca", "Zaragoza", "España"];
   const nombrePlaza = p => (p === "España" ? "España (campañas nacionales)" : p);
   const diasMes = m => new Date(+m.slice(0, 4), +m.slice(5), 0).getDate();
+  // pestañas internas: Inversión por mes / Media plan
+  let subPresu = "inversion";
+  document.querySelectorAll(".subtabs button").forEach(b => b.addEventListener("click", () => {
+    subPresu = b.dataset.sub;
+    document.querySelectorAll(".subtabs button").forEach(o => o.setAttribute("aria-selected", o === b));
+    ["inversion", "mediaplan"].forEach(n => (document.getElementById("sub-" + n).hidden = n !== subPresu));
+    render();
+  }));
+
+  function renderMediaPlan() {
+    const paises = [...new Set(PRESU.actual.map(f => f.pais))];
+    const total = PRESU.actual.reduce((s, f) => s + f.diario, 0);
+    document.getElementById("desc-mediaplan").textContent =
+      `Presupuesto diario de la última columna de la planilla (${PRESU.columna_actual.toLowerCase()}). Si una ciudad tiene varias campañas, se suman. ` +
+      `No depende de los filtros Desde y Hasta. Fuente: ${PRESU.fuente}.`;
+    const filas = paises.map(p => {
+      const ciudades = PRESU.actual.filter(f => f.pais === p);
+      const sub = ciudades.reduce((s, f) => s + f.diario, 0);
+      return `<tr class="grupo"><td>${p}</td><td>Total del país</td><td>${eur1(sub)}</td></tr>` +
+        ciudades.map(f => `<tr><td></td><td>${f.ciudad === p ? `${p} (campañas nacionales)` : f.ciudad}</td><td>${eur1(f.diario)}</td></tr>`).join("");
+    }).join("");
+    document.getElementById("t-mediaplan").innerHTML =
+      `<table><thead><tr><th>País</th><th>Ciudad</th><th>Presupuesto diario actual</th></tr></thead><tbody>${filas}` +
+      `<tr class="total"><td>Total</td><td></td><td>${eur1(total)}</td></tr></tbody></table>`;
+  }
 
   function renderPresupuesto() {
+    if (subPresu === "mediaplan") return renderMediaPlan();
     const a = +selDesde.value, b = +selHasta.value;
     const meses = PRESU.meses.filter(m => { const i = D.meses.indexOf(m); return i >= a && i <= b; });
-    const mensual = modoPresu === "mensual";
-    // valor de una campaña en un mes: diario, o diario × días del mes
-    const valor = (c, m) => { const d = c.diario[PRESU.meses.indexOf(m)]; return mensual ? d * diasMes(m) : d; };
+    // valor de una campaña en un mes: diario × días del mes
+    const valor = (c, m) => c.diario[PRESU.meses.indexOf(m)] * diasMes(m);
     const sum = arr => arr.reduce((s, v) => s + v, 0);
-    const f = mensual ? eur : eur1;
     document.getElementById("periodo-presu").textContent = meses.length ? `${mesLargo(meses[0])} – ${mesLargo(meses[meses.length - 1])}` : "";
-    const nota = mensual ? "El mensual se estima como presupuesto diario × días del mes." : "Presupuesto diario de cada campaña.";
     if (!meses.length) {
       document.getElementById("desc-presu").textContent = "No hay presupuesto cargado en el período elegido (está de enero a octubre 2026).";
       ["l-presu", "c-presu", "t-presu", "desc-presu-t"].forEach(id => (document.getElementById(id).innerHTML = ""));
@@ -891,16 +924,12 @@ td.heat { color: var(--ink); }
       values: meses.map(m => sum(PRESU.campanas.filter(c => c.plaza === p).map(c => valor(c, m)))),
     })).filter(se => sum(se.values) > 0);
     const totales = meses.map((_, i) => sum(series.map(se => se.values[i])));
-    document.getElementById("desc-presu").textContent = (mensual
-      ? `Total del período: ${eur(sum(totales))}. `
-      : `Entre ${eur1(Math.min(...totales))} y ${eur1(Math.max(...totales))} por día en el período. `) +
-      `${nota} Fuente: ${PRESU.fuente}, columnas de enero 2026 en adelante.`;
+    document.getElementById("desc-presu").textContent = `Total del período: ${eur(sum(totales))}. ` +
+      `El mensual se estima como presupuesto diario × días del mes. Fuente: ${PRESU.fuente}, columnas de enero 2026 en adelante.`;
     document.getElementById("l-presu").innerHTML = series.map(se => `<span><i style="background:${se.color}"></i>${se.name}</span>`).join("");
-    barChart(document.getElementById("c-presu"), meses, series, { title: "Presupuesto de Meta Ads por ciudad", height: 300, format: f });
+    barChart(document.getElementById("c-presu"), meses, series, { title: "Presupuesto de Meta Ads por ciudad", height: 300, format: eur });
 
     // tabla: ciudad y sus campañas; se ocultan las campañas sin presupuesto en el período
-    const ultima = mensual ? "Total" : "Promedio";
-    const cierre = vals => (mensual ? sum(vals) : sum(vals) / vals.length);
     const filas = [];
     let ocultas = 0;
     PLAZAS.forEach(p => {
@@ -912,12 +941,12 @@ td.heat { color: var(--ink); }
       filas.push({ tipo: "grupo", nombre: nombrePlaza(p), vals: tot });
       activas.forEach(c => filas.push({ tipo: "det", nombre: `${c.campana} <small style="color:var(--muted)">· ${c.etapa}</small>`, vals: c.vals }));
     });
-    const celda = v => `<td>${v ? f(v) : "–"}</td>`;
+    const celda = v => `<td>${v ? eur(v) : "–"}</td>`;
     document.getElementById("t-presu").innerHTML =
-      `<table><thead><tr><th>Ciudad / campaña</th>${meses.map(m => `<th>${mesCorto(m)}</th>`).join("")}<th>${ultima}</th></tr></thead><tbody>` +
-      filas.map(r => `<tr class="${r.tipo}"><td>${r.nombre}</td>${r.vals.map(celda).join("")}${celda(cierre(r.vals))}</tr>`).join("") +
-      `<tr class="total"><td>Total</td>${totales.map(celda).join("")}${celda(cierre(totales))}</tr></tbody></table>`;
-    document.getElementById("desc-presu-t").textContent = (mensual ? "Presupuesto mensual estimado" : "Presupuesto diario") +
+      `<table><thead><tr><th>Ciudad / campaña</th>${meses.map(m => `<th>${mesCorto(m)}</th>`).join("")}<th>Total</th></tr></thead><tbody>` +
+      filas.map(r => `<tr class="${r.tipo}"><td>${r.nombre}</td>${r.vals.map(celda).join("")}${celda(sum(r.vals))}</tr>`).join("") +
+      `<tr class="total"><td>Total</td>${totales.map(celda).join("")}${celda(sum(totales))}</tr></tbody></table>`;
+    document.getElementById("desc-presu-t").textContent = "Presupuesto mensual estimado" +
       " por campaña. «IDEM» en la planilla toma el valor del mes anterior; abril tuvo un ajuste dentro del mes y se usa el último valor." +
       (ocultas ? ` No se muestran ${ocultas} campañas sin presupuesto en el período.` : "");
   }
