@@ -79,6 +79,8 @@ select {
 .tabs button[aria-selected="true"], .subtabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--s1); }
 .subtabs button { font-size: 13px; }
 #t-mediaplan th:nth-child(2), #t-mediaplan td:nth-child(2) { text-align: left; white-space: normal; }
+#t-mediaplan th { white-space: normal; }
+@media (max-width: 640px) { #t-mediaplan th, #t-mediaplan td { padding: 6px 4px; } }
 .tabpanel[hidden] { display: none; }
 tr.grupo td { font-weight: 600; background: var(--page); }
 tr.det td:first-child { padding-left: 24px; color: var(--ink-2); }
@@ -890,17 +892,20 @@ td.heat { color: var(--ink); }
     const paises = [...new Set(PRESU.actual.map(f => f.pais))];
     const total = PRESU.actual.reduce((s, f) => s + f.diario, 0);
     document.getElementById("desc-mediaplan").textContent =
-      `Presupuesto diario de la última columna de la planilla (${PRESU.columna_actual.toLowerCase()}). Si una ciudad tiene varias campañas, se suman. ` +
+      `Presupuesto diario de la última columna de la planilla (${PRESU.columna_actual.toLowerCase()}). Si una ciudad tiene varias campañas, se suman. El mensual es el diario × 30,4, redondeado. ` +
       `No depende de los filtros Desde y Hasta. Fuente: ${PRESU.fuente}.`;
+    // mensual = diario × 30,4 redondeado por ciudad; los totales suman esas filas para que la columna cierre
+    const mensual = f => Math.round(f.diario * 30.4);
+    const totalMes = lista => lista.reduce((s, f) => s + mensual(f), 0);
     const filas = paises.map(p => {
       const ciudades = PRESU.actual.filter(f => f.pais === p);
       const sub = ciudades.reduce((s, f) => s + f.diario, 0);
-      return `<tr class="grupo"><td>${p}</td><td>Total del país</td><td>${eur1(sub)}</td></tr>` +
-        ciudades.map(f => `<tr><td></td><td>${f.ciudad === p ? `${p} (campañas nacionales)` : f.ciudad}</td><td>${eur1(f.diario)}</td></tr>`).join("");
+      return `<tr class="grupo"><td>${p}</td><td>Total del país</td><td>${eur1(sub)}</td><td>${eur(totalMes(ciudades))}</td></tr>` +
+        ciudades.map(f => `<tr><td></td><td>${f.ciudad === p ? `${p} (campañas nacionales)` : f.ciudad}</td><td>${eur1(f.diario)}</td><td>${eur(mensual(f))}</td></tr>`).join("");
     }).join("");
     document.getElementById("t-mediaplan").innerHTML =
-      `<table><thead><tr><th>País</th><th>Ciudad</th><th>Presupuesto diario actual</th></tr></thead><tbody>${filas}` +
-      `<tr class="total"><td>Total</td><td></td><td>${eur1(total)}</td></tr></tbody></table>`;
+      `<table><thead><tr><th>País</th><th>Ciudad</th><th>Presupuesto diario actual</th><th>Presupuesto mensual</th></tr></thead><tbody>${filas}` +
+      `<tr class="total"><td>Total</td><td></td><td>${eur1(total)}</td><td>${eur(totalMes(PRESU.actual))}</td></tr></tbody></table>`;
   }
 
   function renderPresupuesto() {
