@@ -211,6 +211,7 @@ td.heat { color: var(--ink); }
       <div class="switch" id="sw-detalle" role="group" aria-label="Nivel de detalle">
         <button data-modo="detalle1" aria-pressed="true">Drill-Down 1</button>
         <button data-modo="detalle2" aria-pressed="false">Drill-Down 2</button>
+        <button data-modo="campanas" aria-pressed="false">Campañas</button>
       </div>
       <p class="desc" id="desc-detalle"></p>
       <div class="tablewrap" id="t-detalle"></div>
@@ -757,6 +758,8 @@ td.heat { color: var(--ink); }
       "tipo de alta (integración, importación, manual) en fuentes sin conexión.",
     detalle2: "Drill-Down 2: campaña de Meta en redes sociales pagadas, buscador en búsqueda orgánica, palabra clave en búsqueda pagada, " +
       "ID de la integración o del usuario en fuentes sin conexión.",
+    campanas: "Campañas: Google Ads en búsqueda pagada (Drill-Down 1) y Meta en redes sociales pagadas (Drill-Down 2). " +
+      "Si HubSpot solo dice «Auto-tagged PPC», la campaña se toma del gad_campaignid de la primera página que vio el contacto. Se muestran todas.",
   };
   const MAX_DETALLE = 8; // filas de detalle por canal; el resto se agrupa en «Otros»
 
@@ -794,6 +797,7 @@ td.heat { color: var(--ink); }
     // 3) por detalle, agrupado por canal
     document.getElementById("desc-detalle").textContent = DESC_DETALLE[modoDetalle];
     const porCanal = {};
+    const maxDetalle = modoDetalle === "campanas" ? Infinity : MAX_DETALLE; // en «Campañas» se muestran todas
     D[modoDetalle].forEach(r => {
       const f = { nombre: r.nombre || "(vacío)", ...medir(r) };
       if (f.leads || f.won) (porCanal[r.canal] = porCanal[r.canal] || []).push(f);
@@ -805,12 +809,12 @@ td.heat { color: var(--ink); }
     const filas = [];
     grupos.forEach(g => {
       filas.push({ nombre: NOMBRE_CANAL[g.canal] || g.canal || "Sin canal", leads: g.leads, won: g.won, tipo: "grupo" });
-      g.det.slice(0, MAX_DETALLE).forEach(f => filas.push({ ...f, tipo: "det" }));
-      const resto = g.det.slice(MAX_DETALLE);
+      g.det.slice(0, maxDetalle).forEach(f => filas.push({ ...f, tipo: "det" }));
+      const resto = g.det.slice(maxDetalle);
       if (resto.length) filas.push({ nombre: `Otros (${resto.length})`, tipo: "det det-otros",
         leads: resto.reduce((s, f) => s + f.leads, 0), won: resto.reduce((s, f) => s + f.won, 0) });
     });
-    tabla("t-detalle", filas, "Canal / detalle");
+    tabla("t-detalle", filas, modoDetalle === "campanas" ? "Canal / campaña" : "Canal / detalle");
   }
 
   // ---- pestaña Inversión publicitaria ----
