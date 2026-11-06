@@ -738,7 +738,7 @@ td.heat { color: var(--ink); }
     document.getElementById("desc-curso").textContent =
       `${cursoSel} en el período: ${fmt(tL)} leads, ${fmt(tW)} ${modoCurso === "mes" ? "matrículas cerradas" : "matriculados"} (${tP}) · ` +
       (modoCurso === "mes" ? "matrículas cerradas en el mes, sin importar cuándo se creó el lead" : "de los leads de cada mes, cuántos están hoy matriculados") +
-      " · barras en el eje izquierdo, % en el derecho";
+      " · barras en el eje izquierdo, % en el derecho · si el negocio no tiene curso en HubSpot, se toma de su nombre";
     table(document.getElementById("t-city"), [cursoSel].concat(meses.map(mesCorto), ["Total"]), [
       ["Leads"].concat(cLeads, [tL]),
       [modoCurso === "mes" ? "Matrículas cerradas" : "Matriculados"].concat(cWon, [tW]),
