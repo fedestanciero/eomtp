@@ -361,7 +361,8 @@ td.heat { color: var(--ink); }
   }));
 
   document.getElementById("meta").innerHTML =
-    "Datos de HubSpot · actualizado " + new Date(D.generado).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short" }) +
+    "Datos de HubSpot · actualizado " + new Date(D.generado).toLocaleString("es-ES", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Madrid" }) +
+    " (hora de España)" +
     "<br>Período disponible: " + D.desde + " → " + D.hasta;
 
   function el(tag, attrs, parent) {
