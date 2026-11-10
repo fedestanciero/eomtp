@@ -81,7 +81,7 @@ select {
 #t-mediaplan th:nth-child(2), #t-mediaplan td:nth-child(2) { text-align: left; white-space: normal; }
 #t-mediaplan th { white-space: normal; }
 @media (max-width: 640px) { #t-mediaplan th, #t-mediaplan td { padding: 6px 4px; } }
-.tabpanel[hidden] { display: none; }
+.tabpanel[hidden], .tabs button[hidden] { display: none; }
 tr.grupo td { font-weight: 600; background: var(--page); }
 tr.det td:first-child { padding-left: 24px; color: var(--ink-2); }
 tr.det-otros td:first-child { font-style: italic; }
@@ -145,8 +145,8 @@ td.heat { color: var(--ink); }
   <nav class="tabs" role="tablist">
     <button role="tab" id="tab-resumen" aria-controls="panel-resumen" aria-selected="true" data-tab="resumen">Resumen</button>
     <button role="tab" id="tab-canal" aria-controls="panel-canal" aria-selected="false" data-tab="canal">Rendimiento por canal</button>
-    <button role="tab" id="tab-inversion" aria-controls="panel-inversion" aria-selected="false" data-tab="inversion">Inversión publicitaria</button>
-    <button role="tab" id="tab-presupuesto" aria-controls="panel-presupuesto" aria-selected="false" data-tab="presupuesto">Presupuesto</button>
+    <button role="tab" id="tab-inversion" hidden aria-controls="panel-inversion" aria-selected="false" data-tab="inversion">Inversión publicitaria Deprecated</button>
+    <button role="tab" id="tab-presupuesto" aria-controls="panel-presupuesto" aria-selected="false" data-tab="presupuesto">Inversión publicitaria</button>
   </nav>
 
   <section class="grid tabpanel" id="panel-resumen" role="tabpanel" aria-labelledby="tab-resumen">
